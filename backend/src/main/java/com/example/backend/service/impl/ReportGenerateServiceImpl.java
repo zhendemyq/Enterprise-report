@@ -1,0 +1,383 @@
+package com.example.backend.service.impl;
+
+import cn.dev33.satoken.stp.StpUtil;
+import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.io.FileUtil;
+import cn.hutool.core.io.IoUtil;
+import com.alibaba.excel.EasyExcel;
+import com.alibaba.excel.ExcelWriter;
+import com.alibaba.excel.write.metadata.WriteSheet;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.example.backend.common.ResultCode;
+import com.example.backend.dto.ReportGenerateDTO;
+import com.example.backend.dto.ReportRecordQueryDTO;
+import com.example.backend.entity.ReportRecord;
+import com.example.backend.entity.ReportTemplate;
+import com.example.backend.exception.BusinessException;
+import com.example.backend.mapper.ReportRecordMapper;
+import com.example.backend.service.ReportDatasourceService;
+import com.example.backend.service.ReportGenerateService;
+import com.example.backend.service.ReportTemplateService;
+import com.example.backend.vo.ReportRecordVO;
+import jakarta.servlet.http.HttpServletResponse;
+import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.stereotype.Service;
+
+import java.io.*;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+/**
+ * 报表生成服务实现
+ */
+@Service
+public class ReportGenerateServiceImpl extends ServiceImpl<ReportRecordMapper, ReportRecord> implements ReportGenerateService {
+
+    private static final Logger logger = LoggerFactory.getLogger(ReportGenerateServiceImpl.class);
+
+    @Autowired
+    private ReportTemplateService templateService;
+
+    @Autowired
+    private ReportDatasourceService datasourceService;
+
+    @Value("${report.storage.path:./upload/reports}")
+    private String storagePath;
+
+    @Value("${report.generate.max-rows:100000}")
+    private int maxRows;
+
+    @Value("${report.generate.page-size:5000}")
+    private int pageSize;
+
+    @Override
+    public ReportRecordVO generateReport(ReportGenerateDTO generateDTO) {
+        // 获取模板
+        ReportTemplate template = templateService.getById(generateDTO.getTemplateId());
+        if (template == null) {
+            throw new BusinessException(ResultCode.TEMPLATE_NOT_FOUND);
+        }
+
+        // 创建生成记录
+        ReportRecord record = new ReportRecord();
+        record.setTemplateId(template.getId());
+        record.setTemplateName(template.getTemplateName());
+        record.setReportName(StringUtils.isNotBlank(generateDTO.getReportName()) 
+                ? generateDTO.getReportName() 
+                : template.getTemplateName() + "_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
+        record.setGenerateParams(generateDTO.getParams());
+        record.setFileType(generateDTO.getFileType());
+        record.setStatus(0); // 生成中
+        record.setStartTime(LocalDateTime.now());
+        save(record);
+
+        try {
+            // 查询数据
+            List<Map<String, Object>> dataList = queryReportData(template, generateDTO.getParams());
+            record.setDataRows(dataList.size());
+
+            // 检查数据量
+            if (dataList.size() > maxRows) {
+                throw new BusinessException(ResultCode.REPORT_TOO_LARGE, 
+                        "数据量超过限制，当前: " + dataList.size() + "行，最大: " + maxRows + "行");
+            }
+
+            // 生成报表文件
+            String fileName = generateReportFile(template, dataList, generateDTO.getFileType());
+            record.setFilePath(fileName);
+            
+            File file = new File(storagePath, fileName);
+            record.setFileSize(file.length());
+            record.setStatus(1); // 成功
+            record.setEndTime(LocalDateTime.now());
+            record.setDuration(java.time.Duration.between(record.getStartTime(), record.getEndTime()).toMillis());
+
+        } catch (BusinessException e) {
+            record.setStatus(2); // 失败
+            record.setErrorMsg(e.getMessage());
+            record.setEndTime(LocalDateTime.now());
+            record.setDuration(java.time.Duration.between(record.getStartTime(), record.getEndTime()).toMillis());
+            updateById(record);
+            throw e;
+        } catch (Exception e) {
+            logger.error("报表生成失败", e);
+            record.setStatus(2);
+            record.setErrorMsg(e.getMessage());
+            record.setEndTime(LocalDateTime.now());
+            record.setDuration(java.time.Duration.between(record.getStartTime(), record.getEndTime()).toMillis());
+            updateById(record);
+            throw new BusinessException(ResultCode.REPORT_GENERATE_ERROR, e.getMessage());
+        }
+
+        updateById(record);
+        return convertToVO(record);
+    }
+
+    @Override
+    @Async
+    public Long generateReportAsync(ReportGenerateDTO generateDTO) {
+        // 创建记录
+        ReportTemplate template = templateService.getById(generateDTO.getTemplateId());
+        if (template == null) {
+            throw new BusinessException(ResultCode.TEMPLATE_NOT_FOUND);
+        }
+
+        ReportRecord record = new ReportRecord();
+        record.setTemplateId(template.getId());
+        record.setTemplateName(template.getTemplateName());
+        record.setReportName(StringUtils.isNotBlank(generateDTO.getReportName()) 
+                ? generateDTO.getReportName() 
+                : template.getTemplateName() + "_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
+        record.setGenerateParams(generateDTO.getParams());
+        record.setFileType(generateDTO.getFileType());
+        record.setStatus(0);
+        record.setStartTime(LocalDateTime.now());
+        save(record);
+
+        // 异步执行生成
+        try {
+            List<Map<String, Object>> dataList = queryReportData(template, generateDTO.getParams());
+            record.setDataRows(dataList.size());
+
+            String fileName = generateReportFile(template, dataList, generateDTO.getFileType());
+            record.setFilePath(fileName);
+
+            File file = new File(storagePath, fileName);
+            record.setFileSize(file.length());
+            record.setStatus(1);
+            record.setEndTime(LocalDateTime.now());
+            record.setDuration(java.time.Duration.between(record.getStartTime(), record.getEndTime()).toMillis());
+        } catch (Exception e) {
+            logger.error("异步报表生成失败", e);
+            record.setStatus(2);
+            record.setErrorMsg(e.getMessage());
+            record.setEndTime(LocalDateTime.now());
+            record.setDuration(java.time.Duration.between(record.getStartTime(), record.getEndTime()).toMillis());
+        }
+        updateById(record);
+
+        return record.getId();
+    }
+
+    @Override
+    public void previewReport(Long recordId, HttpServletResponse response) {
+        ReportRecord record = getById(recordId);
+        if (record == null || record.getStatus() != 1) {
+            throw new BusinessException("报表不存在或未生成完成");
+        }
+
+        File file = new File(storagePath, record.getFilePath());
+        if (!file.exists()) {
+            throw new BusinessException("报表文件不存在");
+        }
+
+        try {
+            response.setContentType("application/pdf");
+            response.setHeader("Content-Disposition", "inline; filename=" + 
+                    URLEncoder.encode(record.getReportName() + ".pdf", StandardCharsets.UTF_8));
+            IoUtil.copy(new FileInputStream(file), response.getOutputStream());
+        } catch (IOException e) {
+            throw new BusinessException("预览失败: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public void downloadReport(Long recordId, HttpServletResponse response) {
+        ReportRecord record = getById(recordId);
+        if (record == null || record.getStatus() != 1) {
+            throw new BusinessException("报表不存在或未生成完成");
+        }
+
+        File file = new File(storagePath, record.getFilePath());
+        if (!file.exists()) {
+            throw new BusinessException("报表文件不存在");
+        }
+
+        try {
+            String contentType = "xlsx".equals(record.getFileType()) 
+                    ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    : "application/pdf";
+            response.setContentType(contentType);
+            response.setHeader("Content-Disposition", "attachment; filename=" + 
+                    URLEncoder.encode(record.getReportName() + "." + record.getFileType(), StandardCharsets.UTF_8));
+            IoUtil.copy(new FileInputStream(file), response.getOutputStream());
+
+            // 更新下载次数
+            record.setDownloadCount(record.getDownloadCount() == null ? 1 : record.getDownloadCount() + 1);
+            updateById(record);
+        } catch (IOException e) {
+            throw new BusinessException("下载失败: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public IPage<ReportRecordVO> pageRecords(ReportRecordQueryDTO queryDTO) {
+        Page<ReportRecord> page = new Page<>(queryDTO.getPageNum(), queryDTO.getPageSize());
+        LambdaQueryWrapper<ReportRecord> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(queryDTO.getTemplateId() != null, ReportRecord::getTemplateId, queryDTO.getTemplateId())
+                .like(StringUtils.isNotBlank(queryDTO.getTemplateName()), 
+                    ReportRecord::getTemplateName, queryDTO.getTemplateName())
+                .eq(queryDTO.getStatus() != null, ReportRecord::getStatus, queryDTO.getStatus())
+                .eq(StringUtils.isNotBlank(queryDTO.getFileType()), ReportRecord::getFileType, queryDTO.getFileType())
+                .ge(queryDTO.getStartTime() != null, ReportRecord::getCreateTime, queryDTO.getStartTime())
+                .le(queryDTO.getEndTime() != null, ReportRecord::getCreateTime, queryDTO.getEndTime())
+                .eq(ReportRecord::getCreateBy, StpUtil.getLoginIdAsLong())
+                .orderByDesc(ReportRecord::getCreateTime);
+
+        IPage<ReportRecord> recordPage = page(page, wrapper);
+        return recordPage.convert(this::convertToVO);
+    }
+
+    @Override
+    public ReportRecordVO getRecordDetail(Long id) {
+        ReportRecord record = getById(id);
+        if (record == null) {
+            throw new BusinessException("记录不存在");
+        }
+        return convertToVO(record);
+    }
+
+    @Override
+    public void deleteRecord(Long id) {
+        ReportRecord record = getById(id);
+        if (record != null && StringUtils.isNotBlank(record.getFilePath())) {
+            // 删除文件
+            File file = new File(storagePath, record.getFilePath());
+            FileUtil.del(file);
+        }
+        removeById(id);
+    }
+
+    @Override
+    public ReportRecordVO regenerateReport(Long recordId) {
+        ReportRecord oldRecord = getById(recordId);
+        if (oldRecord == null) {
+            throw new BusinessException("记录不存在");
+        }
+
+        ReportGenerateDTO generateDTO = new ReportGenerateDTO();
+        generateDTO.setTemplateId(oldRecord.getTemplateId());
+        generateDTO.setReportName(oldRecord.getReportName());
+        generateDTO.setParams(oldRecord.getGenerateParams());
+        generateDTO.setFileType(oldRecord.getFileType());
+
+        return generateReport(generateDTO);
+    }
+
+    /**
+     * 查询报表数据
+     */
+    private List<Map<String, Object>> queryReportData(ReportTemplate template, Map<String, Object> params) {
+        if (template.getDatasourceId() == null || StringUtils.isBlank(template.getQuerySql())) {
+            throw new BusinessException("模板数据源或SQL未配置");
+        }
+        return datasourceService.executeQuery(template.getDatasourceId(), template.getQuerySql(), params);
+    }
+
+    /**
+     * 生成报表文件
+     */
+    private String generateReportFile(ReportTemplate template, List<Map<String, Object>> dataList, String fileType) {
+        // 确保目录存在
+        FileUtil.mkdir(storagePath);
+
+        String fileName = UUID.randomUUID().toString() + "." + fileType;
+        String filePath = storagePath + File.separator + fileName;
+
+        if ("xlsx".equals(fileType)) {
+            generateExcel(template, dataList, filePath);
+        } else if ("pdf".equals(fileType)) {
+            // 先生成Excel再转PDF
+            String tempExcel = storagePath + File.separator + UUID.randomUUID().toString() + ".xlsx";
+            generateExcel(template, dataList, tempExcel);
+            convertToPdf(tempExcel, filePath);
+            FileUtil.del(tempExcel);
+        }
+
+        return fileName;
+    }
+
+    /**
+     * 生成Excel文件（使用EasyExcel流式写入）
+     */
+    private void generateExcel(ReportTemplate template, List<Map<String, Object>> dataList, String filePath) {
+        try (ExcelWriter excelWriter = EasyExcel.write(filePath).build()) {
+            WriteSheet writeSheet = EasyExcel.writerSheet("报表数据").build();
+
+            // 分页写入，避免内存溢出
+            int totalSize = dataList.size();
+            int pages = (totalSize + pageSize - 1) / pageSize;
+
+            for (int i = 0; i < pages; i++) {
+                int fromIndex = i * pageSize;
+                int toIndex = Math.min(fromIndex + pageSize, totalSize);
+                List<Map<String, Object>> pageData = dataList.subList(fromIndex, toIndex);
+
+                // 转换为List<List<Object>>格式
+                List<List<Object>> writeData = pageData.stream()
+                        .map(row -> row.values().stream().toList())
+                        .toList();
+
+                excelWriter.write(writeData, writeSheet);
+            }
+        }
+    }
+
+    /**
+     * 将Excel转换为PDF
+     */
+    private void convertToPdf(String excelPath, String pdfPath) {
+        // TODO: 实现Excel转PDF功能，可以使用iText或其他库
+        // 这里简单复制文件作为示例
+        logger.warn("Excel转PDF功能待实现，当前仅复制文件");
+        FileUtil.copy(excelPath, pdfPath, true);
+    }
+
+    private ReportRecordVO convertToVO(ReportRecord record) {
+        ReportRecordVO vo = BeanUtil.copyProperties(record, ReportRecordVO.class);
+
+        // 设置状态名称
+        if (record.getStatus() != null) {
+            String[] statusNames = {"生成中", "成功", "失败"};
+            vo.setStatusName(statusNames[record.getStatus()]);
+        }
+
+        // 格式化文件大小
+        if (record.getFileSize() != null) {
+            vo.setFileSizeStr(formatFileSize(record.getFileSize()));
+        }
+
+        // 格式化耗时
+        if (record.getDuration() != null) {
+            vo.setDurationStr(formatDuration(record.getDuration()));
+        }
+
+        return vo;
+    }
+
+    private String formatFileSize(long size) {
+        if (size < 1024) return size + " B";
+        if (size < 1024 * 1024) return String.format("%.2f KB", size / 1024.0);
+        if (size < 1024 * 1024 * 1024) return String.format("%.2f MB", size / (1024.0 * 1024));
+        return String.format("%.2f GB", size / (1024.0 * 1024 * 1024));
+    }
+
+    private String formatDuration(long millis) {
+        if (millis < 1000) return millis + "ms";
+        if (millis < 60000) return String.format("%.2fs", millis / 1000.0);
+        return String.format("%.2fmin", millis / 60000.0);
+    }
+}

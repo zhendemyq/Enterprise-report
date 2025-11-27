@@ -1,0 +1,195 @@
+package com.example.backend.service.impl;
+
+import cn.hutool.core.bean.BeanUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.example.backend.common.ResultCode;
+import com.example.backend.dto.ReportTemplateDTO;
+import com.example.backend.dto.ReportTemplateQueryDTO;
+import com.example.backend.entity.ReportTemplate;
+import com.example.backend.exception.BusinessException;
+import com.example.backend.mapper.ReportTemplateMapper;
+import com.example.backend.service.ReportTemplateService;
+import com.example.backend.vo.ReportTemplateVO;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+/**
+ * 报表模板服务实现
+ */
+@Service
+public class ReportTemplateServiceImpl extends ServiceImpl<ReportTemplateMapper, ReportTemplate> implements ReportTemplateService {
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @Override
+    public Long createTemplate(ReportTemplateDTO templateDTO) {
+        // 检查模板编码是否重复
+        LambdaQueryWrapper<ReportTemplate> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(ReportTemplate::getTemplateCode, templateDTO.getTemplateCode());
+        if (count(wrapper) > 0) {
+            throw new BusinessException("模板编码已存在");
+        }
+
+        ReportTemplate template = BeanUtil.copyProperties(templateDTO, ReportTemplate.class);
+        template.setStatus(0); // 草稿状态
+        template.setVersion(1);
+        save(template);
+        return template.getId();
+    }
+
+    @Override
+    public void updateTemplate(Long id, ReportTemplateDTO templateDTO) {
+        ReportTemplate template = getById(id);
+        if (template == null) {
+            throw new BusinessException(ResultCode.TEMPLATE_NOT_FOUND);
+        }
+
+        BeanUtil.copyProperties(templateDTO, template, "id", "templateCode", "status", "version");
+        updateById(template);
+    }
+
+    @Override
+    public void deleteTemplate(Long id) {
+        ReportTemplate template = getById(id);
+        if (template == null) {
+            throw new BusinessException(ResultCode.TEMPLATE_NOT_FOUND);
+        }
+        removeById(id);
+    }
+
+    @Override
+    public ReportTemplateVO getTemplateDetail(Long id) {
+        ReportTemplate template = getById(id);
+        if (template == null) {
+            throw new BusinessException(ResultCode.TEMPLATE_NOT_FOUND);
+        }
+        return convertToVO(template);
+    }
+
+    @Override
+    public IPage<ReportTemplateVO> pageTemplates(ReportTemplateQueryDTO queryDTO) {
+        Page<ReportTemplate> page = new Page<>(queryDTO.getPageNum(), queryDTO.getPageSize());
+        LambdaQueryWrapper<ReportTemplate> wrapper = new LambdaQueryWrapper<>();
+        wrapper.like(StringUtils.isNotBlank(queryDTO.getTemplateName()), 
+                    ReportTemplate::getTemplateName, queryDTO.getTemplateName())
+                .like(StringUtils.isNotBlank(queryDTO.getTemplateCode()), 
+                    ReportTemplate::getTemplateCode, queryDTO.getTemplateCode())
+                .eq(queryDTO.getTemplateType() != null, ReportTemplate::getTemplateType, queryDTO.getTemplateType())
+                .eq(queryDTO.getCategoryId() != null, ReportTemplate::getCategoryId, queryDTO.getCategoryId())
+                .eq(queryDTO.getStatus() != null, ReportTemplate::getStatus, queryDTO.getStatus())
+                .orderByAsc(ReportTemplate::getSort)
+                .orderByDesc(ReportTemplate::getCreateTime);
+
+        IPage<ReportTemplate> templatePage = page(page, wrapper);
+        return templatePage.convert(this::convertToVO);
+    }
+
+    @Override
+    public List<ReportTemplateVO> listByCategory(Long categoryId) {
+        LambdaQueryWrapper<ReportTemplate> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(ReportTemplate::getCategoryId, categoryId)
+                .eq(ReportTemplate::getStatus, 1)
+                .orderByAsc(ReportTemplate::getSort);
+        return list(wrapper).stream()
+                .map(this::convertToVO)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public void publishTemplate(Long id) {
+        ReportTemplate template = getById(id);
+        if (template == null) {
+            throw new BusinessException(ResultCode.TEMPLATE_NOT_FOUND);
+        }
+        template.setStatus(1);
+        template.setVersion(template.getVersion() + 1);
+        updateById(template);
+    }
+
+    @Override
+    public void offlineTemplate(Long id) {
+        ReportTemplate template = getById(id);
+        if (template == null) {
+            throw new BusinessException(ResultCode.TEMPLATE_NOT_FOUND);
+        }
+        template.setStatus(2);
+        updateById(template);
+    }
+
+    @Override
+    public Long copyTemplate(Long id, String newName) {
+        ReportTemplate source = getById(id);
+        if (source == null) {
+            throw new BusinessException(ResultCode.TEMPLATE_NOT_FOUND);
+        }
+
+        ReportTemplate target = BeanUtil.copyProperties(source, ReportTemplate.class);
+        target.setId(null);
+        target.setTemplateName(newName);
+        target.setTemplateCode(source.getTemplateCode() + "_copy_" + System.currentTimeMillis());
+        target.setStatus(0);
+        target.setVersion(1);
+        target.setCreateTime(null);
+        target.setUpdateTime(null);
+        save(target);
+        return target.getId();
+    }
+
+    @Override
+    public void saveTemplateDesign(Long id, String designJson) {
+        ReportTemplate template = getById(id);
+        if (template == null) {
+            throw new BusinessException(ResultCode.TEMPLATE_NOT_FOUND);
+        }
+
+        try {
+            Map<String, Object> config = objectMapper.readValue(designJson, 
+                    new TypeReference<Map<String, Object>>() {});
+            template.setTemplateConfig(config);
+            updateById(template);
+        } catch (Exception e) {
+            throw new BusinessException(ResultCode.TEMPLATE_PARSE_ERROR, "模板配置解析失败: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public List<ReportTemplateVO> listUserTemplates() {
+        // TODO: 根据当前用户权限过滤
+        LambdaQueryWrapper<ReportTemplate> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(ReportTemplate::getStatus, 1)
+                .orderByAsc(ReportTemplate::getSort)
+                .orderByDesc(ReportTemplate::getCreateTime);
+        return list(wrapper).stream()
+                .map(this::convertToVO)
+                .collect(Collectors.toList());
+    }
+
+    private ReportTemplateVO convertToVO(ReportTemplate template) {
+        ReportTemplateVO vo = BeanUtil.copyProperties(template, ReportTemplateVO.class);
+        
+        // 设置类型名称
+        if (template.getTemplateType() != null) {
+            String[] typeNames = {"", "明细表", "汇总表", "分组统计表", "图表报表"};
+            vo.setTemplateTypeName(typeNames[template.getTemplateType()]);
+        }
+        
+        // 设置状态名称
+        if (template.getStatus() != null) {
+            String[] statusNames = {"草稿", "已发布", "已下线"};
+            vo.setStatusName(statusNames[template.getStatus()]);
+        }
+        
+        return vo;
+    }
+}

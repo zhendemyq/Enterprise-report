@@ -1,0 +1,138 @@
+# 企业报表生成系统配置
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+
+spring:
+  application:
+    name: enterprise-report
+  
+  # 数据源配置
+  datasource:
+    type: com.alibaba.druid.pool.DruidDataSource
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/enterprise_report?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: root
+    druid:
+      initial-size: 5
+      min-idle: 5
+      max-active: 20
+      max-wait: 60000
+      time-between-eviction-runs-millis: 60000
+      min-evictable-idle-time-millis: 300000
+      validation-query: SELECT 1
+      test-while-idle: true
+      test-on-borrow: false
+      test-on-return: false
+      pool-prepared-statements: true
+      max-pool-prepared-statement-per-connection-size: 20
+
+  # Redis配置
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: 
+      database: 0
+      lettuce:
+        pool:
+          max-active: 8
+          max-wait: -1ms
+          max-idle: 8
+          min-idle: 0
+
+  # 文件上传配置
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 100MB
+
+  # 邮件配置
+  mail:
+    host: smtp.example.com
+    port: 465
+    username: your-email@example.com
+    password: your-password
+    properties:
+      mail:
+        smtp:
+          auth: true
+          ssl:
+            enable: true
+
+# MyBatis Plus配置
+mybatis-plus:
+  mapper-locations: classpath*:mapper/**/*.xml
+  type-aliases-package: com.example.backend.entity
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+  configuration:
+    map-underscore-to-camel-case: true
+    cache-enabled: false
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+# Sa-Token配置
+sa-token:
+  token-name: Authorization
+  timeout: 86400
+  active-timeout: -1
+  is-concurrent: true
+  is-share: true
+  token-style: uuid
+  is-log: false
+
+# 报表系统配置
+report:
+  # 文件存储路径
+  storage:
+    path: ./upload/reports
+    temp-path: ./upload/temp
+  # 报表生成配置
+  generate:
+    max-rows: 100000
+    page-size: 5000
+    timeout: 300000
+  # 缓存配置
+  cache:
+    enabled: true
+    ttl: 3600
+
+# Knife4j API文档配置
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+  group-configs:
+    - group: '企业报表系统API'
+      paths-to-match: '/**'
+      packages-to-scan: com.example.backend.controller
+
+# XXL-JOB配置
+xxl:
+  job:
+    admin:
+      addresses: http://localhost:8081/xxl-job-admin
+    executor:
+      appname: enterprise-report-executor
+      address:
+      ip:
+      port: 9999
+      logpath: ./logs/xxl-job
+      logretentiondays: 30
+    accessToken:
+
+# 日志配置
+logging:
+  level:
+    root: INFO
+    com.example.backend: DEBUG
+    com.baomidou.mybatisplus: DEBUG
+  file:
+    name: ./logs/enterprise-report.log
