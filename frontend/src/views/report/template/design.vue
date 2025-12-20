@@ -67,7 +67,8 @@
               :key="comp.type"
               class="component-item"
               draggable="true"
-              @dragstart="handleDragStart(comp)"
+              @dragstart="handleDragStart($event, comp)"
+              @dblclick="handleComponentInsert(comp)"
             >
               <el-icon :size="20"><component :is="comp.icon" /></el-icon>
               <span>{{ comp.name }}</span>
@@ -628,8 +629,18 @@ const handleSpreadsheetChange = (data) => {
 }
 
 // 拖拽开始
-const handleDragStart = (comp) => {
-  // 处理组件拖拽
+const handleDragStart = (event, comp) => {
+  if (!event?.dataTransfer) return
+  event.dataTransfer.setData('component-type', comp.type)
+  event.dataTransfer.setData('component-name', comp.name)
+}
+
+const handleComponentInsert = (comp) => {
+  if (!univerRef.value?.insertComponentPlaceholder) return
+  const inserted = univerRef.value.insertComponentPlaceholder(comp.type, comp.name)
+  if (!inserted) {
+    ElMessage.warning('请先选择单元格')
+  }
 }
 
 // 字段拖拽开始 - 插入到当前选中单元格
@@ -643,9 +654,20 @@ const handleFieldDragStart = (event, field) => {
 const handleFieldDrop = (event) => {
   event.preventDefault()
   const fieldName = event.dataTransfer.getData('field-name')
+  const componentType = event.dataTransfer.getData('component-type')
+  const componentName = event.dataTransfer.getData('component-name')
   if (fieldName && univerRef.value) {
     univerRef.value.insertFieldPlaceholder(fieldName)
     ElMessage.success(`已插入字段: ${fieldName}`)
+    return
+  }
+  if (componentType && univerRef.value?.insertComponentPlaceholder) {
+    const inserted = univerRef.value.insertComponentPlaceholder(componentType, componentName)
+    if (inserted) {
+      ElMessage.success(`已插入组件: ${componentName || componentType}`)
+    } else {
+      ElMessage.warning('请先选择单元格')
+    }
   }
 }
 

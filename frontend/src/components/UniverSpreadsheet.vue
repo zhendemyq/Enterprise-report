@@ -332,12 +332,27 @@ const handleBold = () => {
 }
 
 // 处理拖放
+const buildComponentPlaceholder = (componentType, componentName) => {
+  const name = componentName ? componentName.trim() : ''
+  const label = name ? `${componentType}:${name}` : componentType
+  return `[[component:${label}]]`
+}
+
 const handleDrop = (event) => {
   event.preventDefault()
   const fieldName = event.dataTransfer.getData('field-name')
   if (fieldName && selectedCell.value) {
     fallbackCellData[selectedCell.value] = `\${${fieldName}}`
     emit('change', { cell: selectedCell.value, value: `\${${fieldName}}` })
+    return
+  }
+
+  const componentType = event.dataTransfer.getData('component-type')
+  const componentName = event.dataTransfer.getData('component-name')
+  if (componentType && selectedCell.value) {
+    const placeholder = buildComponentPlaceholder(componentType, componentName)
+    fallbackCellData[selectedCell.value] = placeholder
+    emit('change', { cell: selectedCell.value, value: placeholder })
   }
 }
 
@@ -349,7 +364,18 @@ const insertFieldPlaceholder = (fieldName) => {
     fallbackCellData[selectedCell.value] = `\${${fieldName}}`
     formulaInput.value = `\${${fieldName}}`
     emit('change', { cell: selectedCell.value, value: `\${${fieldName}}` })
+    return true
   }
+  return false
+}
+
+const insertComponentPlaceholder = (componentType, componentName) => {
+  if (!selectedCell.value) return false
+  const placeholder = buildComponentPlaceholder(componentType, componentName)
+  fallbackCellData[selectedCell.value] = placeholder
+  formulaInput.value = placeholder
+  emit('change', { cell: selectedCell.value, value: placeholder })
+  return true
 }
 
 // 导出为JSON
@@ -394,6 +420,7 @@ defineExpose({
   getWorkbookData,
   setCellValue,
   insertFieldPlaceholder,
+  insertComponentPlaceholder,
   exportToJson,
   importFromJson,
   getUniver: () => univerInstance,
