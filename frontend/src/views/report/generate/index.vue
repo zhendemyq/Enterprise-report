@@ -26,15 +26,15 @@
           
           <!-- 分类标签 -->
           <div class="category-tabs">
-            <div 
+            <div
               v-for="cat in categories"
               :key="cat.id"
               class="category-tab"
               :class="{ active: selectedCategory === cat.id }"
               @click="selectedCategory = cat.id"
             >
-              <el-icon><component :is="cat.icon" /></el-icon>
-              <span>{{ cat.name }}</span>
+              <el-icon><component :is="cat.icon || 'Folder'" /></el-icon>
+              <span>{{ cat.categoryName }}</span>
             </div>
           </div>
           
@@ -324,6 +324,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { listUserTemplates } from '@/api/template'
+import { getCategoryTree } from '@/api/category'
 import { generateReport, downloadReport, previewReport } from '@/api/report'
 import dayjs from 'dayjs'
 import * as XLSX from 'xlsx'
@@ -332,14 +333,10 @@ import * as XLSX from 'xlsx'
 const searchKeyword = ref('')
 const selectedCategory = ref('all')
 
-// 分类列表
-const categories = [
-  { id: 'all', name: '全部', icon: 'Menu' },
-  { id: 'finance', name: '财务', icon: 'Money' },
-  { id: 'sales', name: '销售', icon: 'TrendCharts' },
-  { id: 'operation', name: '运营', icon: 'DataAnalysis' },
-  { id: 'hr', name: '人事', icon: 'User' }
-]
+// 分类列表 - 动态加载
+const categories = ref([
+  { id: 'all', categoryName: '全部', icon: 'Menu' }
+])
 
 // 模板列表
 const templateList = ref([])
@@ -372,26 +369,52 @@ const generatedReport = ref(null)
 // 过滤后的模板
 const filteredTemplates = computed(() => {
   let result = templateList.value
-  
+
   if (selectedCategory.value !== 'all') {
-    result = result.filter(t => t.categoryCode === selectedCategory.value)
+    result = result.filter(t => t.categoryId == selectedCategory.value)
   }
-  
+
   if (searchKeyword.value) {
     const keyword = searchKeyword.value.toLowerCase()
-    result = result.filter(t => 
+    result = result.filter(t =>
       t.templateName.toLowerCase().includes(keyword) ||
       t.description?.toLowerCase().includes(keyword)
     )
   }
-  
+
   return result
 })
 
 // 初始化
 onMounted(() => {
+  loadCategories()
   loadTemplates()
 })
+
+// 加载分类列表
+const loadCategories = async () => {
+  try {
+    const res = await getCategoryTree()
+    const list = res.data || []
+    // 扁平化树形结构
+    const flatList = []
+    const flatten = (items) => {
+      items.forEach(item => {
+        flatList.push(item)
+        if (item.children?.length) {
+          flatten(item.children)
+        }
+      })
+    }
+    flatten(list)
+    categories.value = [
+      { id: 'all', categoryName: '全部', icon: 'Menu' },
+      ...flatList
+    ]
+  } catch (error) {
+    console.error('加载分类失败:', error)
+  }
+}
 
 // 加载模板列表
 const loadTemplates = async () => {
