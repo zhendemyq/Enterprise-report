@@ -1,20 +1,20 @@
-ï»¿<template>
+<template>
   <div class="design-container">
-    <!-- é¡¶éƒ¨å·¥å…·æ  -->
+    <!-- ¶¥²¿¹¤¾ßÀ¸ -->
     <div class="design-header">
       <div class="header-left">
         <el-button text @click="handleBack">
           <el-icon><ArrowLeft /></el-icon>
-          è¿”å›ž
+          ·µ»Ø
         </el-button>
         <div class="template-info">
           <el-input
             v-model="templateName"
-            placeholder="è¯·è¾“å…¥æ¨¡æ¿åç§°"
+            placeholder="ÇëÊäÈëÄ£°åÃû³Æ"
             class="name-input"
           />
-          <el-tag v-if="templateId" type="info" size="small">ç¼–è¾‘æ¨¡å¼</el-tag>
-          <el-tag v-else type="success" size="small">æ–°å»ºæ¨¡å¼</el-tag>
+          <el-tag v-if="templateId" type="info" size="small">±à¼­Ä£Ê½</el-tag>
+          <el-tag v-else type="success" size="small">ÐÂ½¨Ä£Ê½</el-tag>
         </div>
       </div>
       
@@ -22,19 +22,19 @@
         <el-radio-group v-model="activeTab" class="tab-group">
           <el-radio-button label="design">
             <el-icon><Edit /></el-icon>
-            è®¾è®¡
+            Éè¼Æ
           </el-radio-button>
           <el-radio-button label="data">
             <el-icon><Connection /></el-icon>
-            æ•°æ®
+            Êý¾Ý
           </el-radio-button>
           <el-radio-button label="params">
             <el-icon><Filter /></el-icon>
-            å‚æ•°
+            ²ÎÊý
           </el-radio-button>
           <el-radio-button label="preview">
             <el-icon><View /></el-icon>
-            é¢„è§ˆ
+            Ô¤ÀÀ
           </el-radio-button>
         </el-radio-group>
       </div>
@@ -42,25 +42,25 @@
       <div class="header-right">
         <el-button @click="handlePreview">
           <el-icon><View /></el-icon>
-          é¢„è§ˆ
+          Ô¤ÀÀ
         </el-button>
         <el-button type="primary" :loading="saveLoading" @click="handleSave">
           <el-icon><Check /></el-icon>
-          ä¿å­˜
+          ±£´æ
         </el-button>
         <el-button type="success" @click="handlePublish">
           <el-icon><Upload /></el-icon>
-          å‘å¸ƒ
+          ·¢²¼
         </el-button>
       </div>
     </div>
     
-    <!-- ä¸»å†…å®¹åŒº -->
+    <!-- Ö÷ÄÚÈÝÇø -->
     <div class="design-main">
-      <!-- å·¦ä¾§å·¥å…·é¢æ¿ -->
+      <!-- ×ó²à¹¤¾ßÃæ°å -->
       <div class="left-panel">
         <div class="panel-section">
-          <div class="section-title">ç»„ä»¶</div>
+          <div class="section-title">×é¼þ</div>
           <div class="component-list">
             <div 
               v-for="comp in components" 
@@ -76,15 +76,15 @@
         </div>
         
         <div class="panel-section">
-          <div class="section-title">å­—æ®µç»‘å®š</div>
+          <div class="section-title">×Ö¶Î°ó¶¨</div>
           <div class="field-list">
             <div v-if="!datasourceId" class="empty-tip">
-              è¯·å…ˆé€‰æ‹©æ•°æ®æº
+              ÇëÏÈÑ¡ÔñÊý¾ÝÔ´
             </div>
             <template v-else>
               <el-select
                 v-model="tableName"
-                placeholder="é€‰æ‹©è¡¨"
+                placeholder="Ñ¡Ôñ±í"
                 size="small"
                 class="table-select"
                 :loading="fieldLoading"
@@ -98,7 +98,7 @@
                 />
               </el-select>
               <div v-if="tableList.length === 0" class="empty-tip">
-                æš‚æ— å¯ç”¨è¡¨
+                ÔÝÎÞ¿ÉÓÃ±í
               </div>
               <div 
                 v-for="field in fieldList" 
@@ -116,12 +116,12 @@
         </div>
       </div>
       
-      <!-- ä¸­é—´è®¾è®¡åŒº -->
+      <!-- ÖÐ¼äÉè¼ÆÇø -->
       <div class="center-panel">
-        <!-- è®¾è®¡é¢æ¿ -->
+        <!-- Éè¼ÆÃæ°å -->
         <div v-show="activeTab === 'design'" class="design-area">
           <div class="spreadsheet-container" ref="spreadsheetRef">
-            <!-- Univer ç”µå­è¡¨æ ¼è®¾è®¡å™¨ -->
+            <!-- Univer µç×Ó±í¸ñÉè¼ÆÆ÷ -->
             <UniverSpreadsheet
               ref="univerRef"
               :workbook-data="workbookData"
@@ -131,36 +131,36 @@
             />
           </div>
           
-          <!-- è®¾è®¡å™¨å·¥å…·æç¤º -->
+          <!-- Éè¼ÆÆ÷¹¤¾ßÌáÊ¾ -->
           <div class="design-tips" v-if="showDesignTips">
             <el-alert 
-              title="è®¾è®¡å™¨ä½¿ç”¨æç¤º" 
+              title="Éè¼ÆÆ÷Ê¹ÓÃÌáÊ¾" 
               type="info" 
               closable
               @close="showDesignTips = false"
             >
               <template #default>
                 <ul class="tips-list">
-                  <li>ä»Žå·¦ä¾§æ‹–æ‹½å­—æ®µåˆ°è¡¨æ ¼å•å…ƒæ ¼è¿›è¡Œæ•°æ®ç»‘å®š</li>
-                  <li>ä½¿ç”¨ <code>${fieldName}</code> æ ¼å¼æ’å…¥åŠ¨æ€å­—æ®µ</li>
-                  <li>æ”¯æŒExcelå…¬å¼ï¼Œå¦‚ SUMã€AVERAGE ç­‰</li>
-                  <li>å¯åˆå¹¶å•å…ƒæ ¼ã€è®¾ç½®æ ·å¼å’Œæ ¼å¼åŒ–</li>
+                  <li>´Ó×ó²àÍÏ×§×Ö¶Îµ½±í¸ñµ¥Ôª¸ñ½øÐÐÊý¾Ý°ó¶¨</li>
+                  <li>Ê¹ÓÃ <code>${fieldName}</code> ¸ñÊ½²åÈë¶¯Ì¬×Ö¶Î</li>
+                  <li>Ö§³ÖExcel¹«Ê½£¬Èç SUM¡¢AVERAGE µÈ</li>
+                  <li>¿ÉºÏ²¢µ¥Ôª¸ñ¡¢ÉèÖÃÑùÊ½ºÍ¸ñÊ½»¯</li>
                 </ul>
               </template>
             </el-alert>
           </div>
         </div>
         
-        <!-- æ•°æ®é…ç½®é¢æ¿ -->
+        <!-- Êý¾ÝÅäÖÃÃæ°å -->
         <div v-show="activeTab === 'data'" class="data-config">
           <div class="config-card">
-            <h3 class="config-title">æ•°æ®æºé…ç½®</h3>
+            <h3 class="config-title">Êý¾ÝÔ´ÅäÖÃ</h3>
             
             <el-form label-position="top">
-              <el-form-item label="é€‰æ‹©æ•°æ®æº">
+              <el-form-item label="Ñ¡ÔñÊý¾ÝÔ´">
                 <el-select 
                   v-model="datasourceId" 
-                  placeholder="è¯·é€‰æ‹©æ•°æ®æº"
+                  placeholder="ÇëÑ¡ÔñÊý¾ÝÔ´"
                   @change="handleDatasourceChange"
                 >
                   <el-option
@@ -172,7 +172,7 @@
                 </el-select>
               </el-form-item>
               
-              <el-form-item label="SQLæŸ¥è¯¢">
+              <el-form-item label="SQL²éÑ¯">
                 <div class="sql-editor">
                   <el-input
                     v-model="querySql"
@@ -185,16 +185,16 @@
                 <div class="sql-actions">
                   <el-button size="small" @click="handleFormatSql">
                     <el-icon><MagicStick /></el-icon>
-                    æ ¼å¼åŒ–
+                    ¸ñÊ½»¯
                   </el-button>
                   <el-button size="small" type="primary" @click="handleExecuteSql">
                     <el-icon><CaretRight /></el-icon>
-                    æ‰§è¡Œ
+                    Ö´ÐÐ
                   </el-button>
                 </div>
               </el-form-item>
               
-              <el-form-item v-if="queryResult.length > 0" label="æŸ¥è¯¢ç»“æžœé¢„è§ˆ">
+              <el-form-item v-if="queryResult.length > 0" label="²éÑ¯½á¹ûÔ¤ÀÀ">
                 <el-table :data="queryResult.slice(0, 5)" size="small" border>
                   <el-table-column
                     v-for="col in queryColumns"
@@ -205,21 +205,21 @@
                   />
                 </el-table>
                 <p class="result-tip">
-                  å…± {{ queryResult.length }} æ¡è®°å½•ï¼Œæ˜¾ç¤ºå‰ 5 æ¡
+                  ¹² {{ queryResult.length }} Ìõ¼ÇÂ¼£¬ÏÔÊ¾Ç° 5 Ìõ
                 </p>
               </el-form-item>
             </el-form>
           </div>
         </div>
         
-        <!-- å‚æ•°é…ç½®é¢æ¿ -->
+        <!-- ²ÎÊýÅäÖÃÃæ°å -->
         <div v-show="activeTab === 'params'" class="params-config">
           <div class="config-card">
             <div class="config-header">
-              <h3 class="config-title">å‚æ•°é…ç½®</h3>
+              <h3 class="config-title">²ÎÊýÅäÖÃ</h3>
               <el-button type="primary" size="small" @click="addParam">
                 <el-icon><Plus /></el-icon>
-                æ·»åŠ å‚æ•°
+                Ìí¼Ó²ÎÊý
               </el-button>
             </div>
             
@@ -230,7 +230,7 @@
                 class="param-item"
               >
                 <div class="param-header">
-                  <span class="param-name">{{ param.name || 'æ–°å‚æ•°' }}</span>
+                  <span class="param-name">{{ param.name || 'ÐÂ²ÎÊý' }}</span>
                   <el-button text type="danger" @click="removeParam(index)">
                     <el-icon><Delete /></el-icon>
                   </el-button>
@@ -238,61 +238,61 @@
                 
                 <el-form label-position="top" class="param-form">
                   <div class="form-row">
-                    <el-form-item label="å‚æ•°åç§°" class="flex-1">
-                      <el-input v-model="param.name" placeholder="å¦‚: startDate" />
+                    <el-form-item label="²ÎÊýÃû³Æ" class="flex-1">
+                      <el-input v-model="param.name" placeholder="Èç: startDate" />
                     </el-form-item>
-                    <el-form-item label="æ˜¾ç¤ºåç§°" class="flex-1">
-                      <el-input v-model="param.label" placeholder="å¦‚: å¼€å§‹æ—¥æœŸ" />
+                    <el-form-item label="ÏÔÊ¾Ãû³Æ" class="flex-1">
+                      <el-input v-model="param.label" placeholder="Èç: ¿ªÊ¼ÈÕÆÚ" />
                     </el-form-item>
                   </div>
                   
                   <div class="form-row">
-                    <el-form-item label="æŽ§ä»¶ç±»åž‹" class="flex-1">
+                    <el-form-item label="¿Ø¼þÀàÐÍ" class="flex-1">
                       <el-select v-model="param.type">
-                        <el-option label="æ–‡æœ¬æ¡†" value="input" />
-                        <el-option label="æ•°å­—æ¡†" value="number" />
-                        <el-option label="æ—¥æœŸé€‰æ‹©" value="date" />
-                        <el-option label="æ—¥æœŸèŒƒå›´" value="daterange" />
-                        <el-option label="ä¸‹æ‹‰é€‰æ‹©" value="select" />
-                        <el-option label="å¤šé€‰" value="multiselect" />
+                        <el-option label="ÎÄ±¾¿ò" value="input" />
+                        <el-option label="Êý×Ö¿ò" value="number" />
+                        <el-option label="ÈÕÆÚÑ¡Ôñ" value="date" />
+                        <el-option label="ÈÕÆÚ·¶Î§" value="daterange" />
+                        <el-option label="ÏÂÀ­Ñ¡Ôñ" value="select" />
+                        <el-option label="¶àÑ¡" value="multiselect" />
                       </el-select>
                     </el-form-item>
-                    <el-form-item label="é»˜è®¤å€¼" class="flex-1">
-                      <el-input v-model="param.defaultValue" placeholder="é»˜è®¤å€¼" />
+                    <el-form-item label="Ä¬ÈÏÖµ" class="flex-1">
+                      <el-input v-model="param.defaultValue" placeholder="Ä¬ÈÏÖµ" />
                     </el-form-item>
                   </div>
                   
-                  <el-form-item label="SQLæ˜ å°„">
+                  <el-form-item label="SQLÓ³Éä">
                     <el-input 
                       v-model="param.sqlMapping" 
-                      placeholder="å¦‚: AND create_time >= #{startDate}"
+                      placeholder="Èç: AND create_time >= #{startDate}"
                     />
                   </el-form-item>
                 </el-form>
               </div>
               
               <div v-if="paramList.length === 0" class="empty-params">
-                <el-empty description="æš‚æ— å‚æ•°é…ç½®" :image-size="80">
-                  <el-button type="primary" @click="addParam">æ·»åŠ å‚æ•°</el-button>
+                <el-empty description="ÔÝÎÞ²ÎÊýÅäÖÃ" :image-size="80">
+                  <el-button type="primary" @click="addParam">Ìí¼Ó²ÎÊý</el-button>
                 </el-empty>
               </div>
             </div>
           </div>
         </div>
         
-        <!-- é¢„è§ˆé¢æ¿ -->
+        <!-- Ô¤ÀÀÃæ°å -->
         <div v-show="activeTab === 'preview'" class="preview-panel">
           <div class="preview-card">
             <div class="preview-header">
-              <h3 class="preview-title">æŠ¥è¡¨é¢„è§ˆ</h3>
+              <h3 class="preview-title">±¨±íÔ¤ÀÀ</h3>
               <div class="preview-actions">
                 <el-button size="small">
                   <el-icon><Download /></el-icon>
-                  å¯¼å‡º Excel
+                  µ¼³ö Excel
                 </el-button>
                 <el-button size="small">
                   <el-icon><Document /></el-icon>
-                  å¯¼å‡º PDF
+                  µ¼³ö PDF
                 </el-button>
               </div>
             </div>
@@ -300,9 +300,9 @@
             <div class="preview-content">
               <div class="preview-placeholder">
                 <el-icon :size="48"><Picture /></el-icon>
-                <p>ç‚¹å‡»ã€Œç”Ÿæˆé¢„è§ˆã€æŒ‰é’®æŸ¥çœ‹æŠ¥è¡¨æ•ˆæžœ</p>
+                <p>µã»÷¡¸Éú³ÉÔ¤ÀÀ¡¹°´Å¥²é¿´±¨±íÐ§¹û</p>
                 <el-button type="primary" @click="generatePreview">
-                  ç”Ÿæˆé¢„è§ˆ
+                  Éú³ÉÔ¤ÀÀ
                 </el-button>
               </div>
             </div>
@@ -310,13 +310,13 @@
         </div>
       </div>
       
-      <!-- å³ä¾§å±žæ€§é¢æ¿ -->
+      <!-- ÓÒ²àÊôÐÔÃæ°å -->
       <div class="right-panel">
         <div class="panel-section">
-          <div class="section-title">å±žæ€§è®¾ç½®</div>
+          <div class="section-title">ÊôÐÔÉèÖÃ</div>
           
           <el-form label-position="top" class="property-form">
-            <el-form-item label="å•å…ƒæ ¼æ ·å¼">
+            <el-form-item label="µ¥Ôª¸ñÑùÊ½">
               <div class="style-toolbar">
                 <el-button-group>
                   <el-button size="small">
@@ -332,7 +332,7 @@
               </div>
             </el-form-item>
             
-            <el-form-item label="å¯¹é½æ–¹å¼">
+            <el-form-item label="¶ÔÆë·½Ê½">
               <el-button-group>
                 <el-button size="small">
                   <el-icon><Back /></el-icon>
@@ -346,38 +346,38 @@
               </el-button-group>
             </el-form-item>
             
-            <el-form-item label="å­—ä½“å¤§å°">
+            <el-form-item label="×ÖÌå´óÐ¡">
               <el-input-number v-model="fontSize" :min="8" :max="72" size="small" />
             </el-form-item>
             
-            <el-form-item label="èƒŒæ™¯è‰²">
+            <el-form-item label="±³¾°É«">
               <el-color-picker v-model="bgColor" size="small" />
             </el-form-item>
             
-            <el-form-item label="å­—ä½“é¢œè‰²">
+            <el-form-item label="×ÖÌåÑÕÉ«">
               <el-color-picker v-model="fontColor" size="small" />
             </el-form-item>
           </el-form>
         </div>
         
         <div class="panel-section">
-          <div class="section-title">æ¨¡æ¿è®¾ç½®</div>
+          <div class="section-title">Ä£°åÉèÖÃ</div>
           
           <el-form label-position="top" class="property-form">
-            <el-form-item label="æ¨¡æ¿ç±»åž‹">
-              <el-select v-model="templateType" placeholder="é€‰æ‹©ç±»åž‹">
-                <el-option label="æ˜Žç»†è¡¨" :value="1" />
-                <el-option label="æ±‡æ€»è¡¨" :value="2" />
-                <el-option label="åˆ†ç»„ç»Ÿè®¡è¡¨" :value="3" />
-                <el-option label="å›¾è¡¨æŠ¥è¡¨" :value="4" />
+            <el-form-item label="Ä£°åÀàÐÍ">
+              <el-select v-model="templateType" placeholder="Ñ¡ÔñÀàÐÍ">
+                <el-option label="Ã÷Ï¸±í" :value="1" />
+                <el-option label="»ã×Ü±í" :value="2" />
+                <el-option label="·Ö×éÍ³¼Æ±í" :value="3" />
+                <el-option label="Í¼±í±¨±í" :value="4" />
               </el-select>
             </el-form-item>
             
-            <el-form-item label="åˆ†é¡µå¤§å°">
+            <el-form-item label="·ÖÒ³´óÐ¡">
               <el-input-number v-model="pageSize" :min="100" :max="100000" :step="100" />
             </el-form-item>
             
-            <el-form-item label="å¯ç”¨ç¼“å­˜">
+            <el-form-item label="ÆôÓÃ»º´æ">
               <el-switch v-model="enableCache" />
             </el-form-item>
           </el-form>
@@ -400,16 +400,16 @@ import * as XLSX from 'xlsx'
 const route = useRoute()
 const router = useRouter()
 
-// æ¨¡æ¿ID
+// Ä£°åID
 const templateId = ref(route.params.id || null)
 
-// åŸºæœ¬ä¿¡æ¯
-const templateName = ref('æœªå‘½åæŠ¥è¡¨æ¨¡æ¿')
+// »ù±¾ÐÅÏ¢
+const templateName = ref('Î´ÃüÃû±¨±íÄ£°å')
 const templateType = ref(1)
 const activeTab = ref('design')
 const saveLoading = ref(false)
 
-// Univerè®¾è®¡å™¨ç›¸å…³
+// UniverÉè¼ÆÆ÷Ïà¹Ø
 const spreadsheetRef = ref(null)
 const univerRef = ref(null)
 const showDesignTips = ref(true)
@@ -417,16 +417,16 @@ const workbookData = ref(null)
 const selectedCell = ref('')
 const columns = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J']
 
-// ç»„ä»¶åˆ—è¡¨
+// ×é¼þÁÐ±í
 const components = [
-  { type: 'text', name: 'æ–‡æœ¬', icon: 'Document' },
-  { type: 'image', name: 'å›¾ç‰‡', icon: 'Picture' },
-  { type: 'table', name: 'è¡¨æ ¼', icon: 'Grid' },
-  { type: 'chart', name: 'å›¾è¡¨', icon: 'TrendCharts' },
-  { type: 'formula', name: 'å…¬å¼', icon: 'Operation' }
+  { type: 'text', name: 'ÎÄ±¾', icon: 'Document' },
+  { type: 'image', name: 'Í¼Æ¬', icon: 'Picture' },
+  { type: 'table', name: '±í¸ñ', icon: 'Grid' },
+  { type: 'chart', name: 'Í¼±í', icon: 'TrendCharts' },
+  { type: 'formula', name: '¹«Ê½', icon: 'Operation' }
 ]
 
-// æ•°æ®æºç›¸å…³
+// Êý¾ÝÔ´Ïà¹Ø
 const datasourceId = ref(null)
 const datasourceList = ref([])
 const querySql = ref('')
@@ -437,10 +437,10 @@ const tableList = ref([])
 const tableName = ref('')
 const fieldLoading = ref(false)
 
-// å‚æ•°é…ç½®
+// ²ÎÊýÅäÖÃ
 const paramList = ref([])
 
-// æ ·å¼ç›¸å…³
+// ÑùÊ½Ïà¹Ø
 const fontSize = ref(12)
 const bgColor = ref('')
 const fontColor = ref('#000000')
@@ -449,7 +449,7 @@ const enableCache = ref(true)
 
 const cellData = reactive({})
 
-// åˆå§‹åŒ–
+// ³õÊ¼»¯
 onMounted(async () => {
   await loadDatasources()
   if (templateId.value) {
@@ -457,7 +457,7 @@ onMounted(async () => {
   }
 })
 
-// åŠ è½½æ•°æ®æº
+// ¼ÓÔØÊý¾ÝÔ´
 const loadDatasources = async () => {
   try {
     const res = await listDatasources()
@@ -468,7 +468,7 @@ const loadDatasources = async () => {
   }
 }
 
-// åŠ è½½æ¨¡æ¿è¯¦æƒ…
+// ¼ÓÔØÄ£°åÏêÇé
 const loadTemplateDetail = async () => {
   try {
     const res = await getTemplateDetail(templateId.value)
@@ -489,7 +489,7 @@ const loadTemplateDetail = async () => {
   }
 }
 
-// å¤„ç†æ•°æ®æºå˜æ›´
+// ´¦ÀíÊý¾ÝÔ´±ä¸ü
 const handleDatasourceChange = async () => {
   if (!datasourceId.value) {
     fieldList.value = []
@@ -512,7 +512,7 @@ const handleDatasourceChange = async () => {
     tableList.value = []
     tableName.value = ''
     fieldList.value = []
-    ElMessage.error('å­—æ®µåŠ è½½å¤±è´¥')
+    ElMessage.error('×Ö¶Î¼ÓÔØÊ§°Ü')
   } finally {
     fieldLoading.value = false
   }
@@ -528,7 +528,7 @@ const handleTableChange = async (value) => {
     await loadTableColumns(value)
   } catch (error) {
     fieldList.value = []
-    ElMessage.error('å­—æ®µåŠ è½½å¤±è´¥')
+    ElMessage.error('×Ö¶Î¼ÓÔØÊ§°Ü')
   } finally {
     fieldLoading.value = false
   }
@@ -538,15 +538,14 @@ const loadTableColumns = async (table) => {
   const res = await getTableColumns(datasourceId.value, table)
   const columns = res.data || []
   fieldList.value = columns.map((col) => ({
-    name: col.column_name || col.columnName,
-    type: col.data_type || col.dataType || '',
-    label: col.column_comment || col.columnComment || ''
+    name: col.COLUMN_NAME || col.column_name || col.columnName || col.name,
+    type: col.DATA_TYPE || col.data_type || col.dataType || '',
+    label: col.COLUMN_COMMENT || col.column_comment || col.columnComment || ''
   }))
 }
-
-// æ ¼å¼åŒ–SQL
+// ¸ñÊ½»¯SQL
 const handleFormatSql = () => {
-  // ç®€å•æ ¼å¼åŒ–
+  // ¼òµ¥¸ñÊ½»¯
   querySql.value = querySql.value
     .replace(/\s+/g, ' ')
     .replace(/\s*,\s*/g, ',\n  ')
@@ -567,14 +566,14 @@ const inferFieldType = (value) => {
   return 'string'
 }
 
-// æ‰§è¡ŒSQL
+// Ö´ÐÐSQL
 const handleExecuteSql = async () => {
   if (!datasourceId.value) {
-    ElMessage.warning('è¯·å…ˆé€‰æ‹©æ•°æ®æº')
+    ElMessage.warning('ÇëÏÈÑ¡ÔñÊý¾ÝÔ´')
     return
   }
   if (!querySql.value.trim()) {
-    ElMessage.warning('è¯·è¾“å…¥SQLè¯­å¥')
+    ElMessage.warning('ÇëÊäÈëSQLÓï¾ä')
     return
   }
   
@@ -584,7 +583,7 @@ const handleExecuteSql = async () => {
     if (queryResult.value.length > 0) {
       queryColumns.value = Object.keys(queryResult.value[0])
     }
-    ElMessage.success('æŸ¥è¯¢æˆåŠŸ')
+    ElMessage.success('²éÑ¯³É¹¦')
   } catch (error) {
     queryResult.value = []
     queryColumns.value = []
@@ -592,7 +591,7 @@ const handleExecuteSql = async () => {
   }
 }
 
-// æ·»åŠ å‚æ•°
+// Ìí¼Ó²ÎÊý
 const addParam = () => {
   paramList.value.push({
     name: '',
@@ -603,73 +602,73 @@ const addParam = () => {
   })
 }
 
-// åˆ é™¤å‚æ•°
+// É¾³ý²ÎÊý
 const removeParam = (index) => {
   paramList.value.splice(index, 1)
 }
 
-// èŽ·å–å•å…ƒæ ¼å†…å®¹
+// »ñÈ¡µ¥Ôª¸ñÄÚÈÝ
 const getCellContent = (col, row) => {
   return cellData[`${col}${row}`] || ''
 }
 
-// é€‰ä¸­å•å…ƒæ ¼
+// Ñ¡ÖÐµ¥Ôª¸ñ
 const selectCell = (cell) => {
   selectedCell.value = cell
 }
 
-// Univerè®¾è®¡å™¨å°±ç»ªäº‹ä»¶
+// UniverÉè¼ÆÆ÷¾ÍÐ÷ÊÂ¼þ
 const handleUniverReady = ({ univer, workbook }) => {
-  console.log('Univerè®¾è®¡å™¨å·²å°±ç»ª', univer, workbook)
+  console.log('UniverÉè¼ÆÆ÷ÒÑ¾ÍÐ÷', univer, workbook)
 }
 
-// ç”µå­è¡¨æ ¼å˜åŒ–äº‹ä»¶
+// µç×Ó±í¸ñ±ä»¯ÊÂ¼þ
 const handleSpreadsheetChange = (data) => {
-  console.log('ç”µå­è¡¨æ ¼æ•°æ®å˜åŒ–', data)
+  console.log('µç×Ó±í¸ñÊý¾Ý±ä»¯', data)
 }
 
-// æ‹–æ‹½å¼€å§‹
+// ÍÏ×§¿ªÊ¼
 const handleDragStart = (comp) => {
-  // å¤„ç†ç»„ä»¶æ‹–æ‹½
+  // ´¦Àí×é¼þÍÏ×§
 }
 
-// å­—æ®µæ‹–æ‹½å¼€å§‹ - æ’å…¥åˆ°å½“å‰é€‰ä¸­å•å…ƒæ ¼
+// ×Ö¶ÎÍÏ×§¿ªÊ¼ - ²åÈëµ½µ±Ç°Ñ¡ÖÐµ¥Ôª¸ñ
 const handleFieldDragStart = (field) => {
-  // å°†å­—æ®µåå­˜å‚¨åˆ°æ‹–æ‹½æ•°æ®ä¸­
+  // ½«×Ö¶ÎÃû´æ´¢µ½ÍÏ×§Êý¾ÝÖÐ
   event.dataTransfer.setData('text/plain', `\${${field.name}}`)
   event.dataTransfer.setData('field-name', field.name)
 }
 
-// å¤„ç†å­—æ®µæ”¾ç½®
+// ´¦Àí×Ö¶Î·ÅÖÃ
 const handleFieldDrop = (event) => {
   event.preventDefault()
   const fieldName = event.dataTransfer.getData('field-name')
   if (fieldName && univerRef.value) {
     univerRef.value.insertFieldPlaceholder(fieldName)
-    ElMessage.success(`å·²æ’å…¥å­—æ®µ: ${fieldName}`)
+    ElMessage.success(`ÒÑ²åÈë×Ö¶Î: ${fieldName}`)
   }
 }
 
-// è¿”å›ž
+// ·µ»Ø
 const handleBack = () => {
   router.push('/report/template')
 }
 
-// é¢„è§ˆ
+// Ô¤ÀÀ
 const handlePreview = () => {
   activeTab.value = 'preview'
 }
 
-// ç”Ÿæˆé¢„è§ˆ
+// Éú³ÉÔ¤ÀÀ
 const generatePreview = () => {
-  ElMessage.info('æ­£åœ¨ç”Ÿæˆé¢„è§ˆ...')
+  ElMessage.info('ÕýÔÚÉú³ÉÔ¤ÀÀ...')
 }
 
-// ä¿å­˜
+// ±£´æ
 const handleSave = async () => {
   saveLoading.value = true
   try {
-    // èŽ·å–Univerè®¾è®¡å™¨æ•°æ®
+    // »ñÈ¡UniverÉè¼ÆÆ÷Êý¾Ý
     let spreadsheetData = null
     if (univerRef.value) {
       spreadsheetData = univerRef.value.exportToJson()
@@ -681,7 +680,7 @@ const handleSave = async () => {
       datasourceId: datasourceId.value,
       querySql: querySql.value,
       paramConfig: JSON.stringify(paramList.value),
-      spreadsheetData: spreadsheetData, // Univerè®¾è®¡å™¨æ•°æ®
+      spreadsheetData: spreadsheetData, // UniverÉè¼ÆÆ÷Êý¾Ý
       cellData: cellData,
       styleConfig: {
         fontSize: fontSize.value,
@@ -694,29 +693,29 @@ const handleSave = async () => {
       await saveTemplateDesign(templateId.value, designJson)
     }
     
-    ElMessage.success('ä¿å­˜æˆåŠŸ')
+    ElMessage.success('±£´æ³É¹¦')
   } catch (error) {
-    ElMessage.error('ä¿å­˜å¤±è´¥')
+    ElMessage.error('±£´æÊ§°Ü')
   } finally {
     saveLoading.value = false
   }
 }
 
-// å‘å¸ƒ
+// ·¢²¼
 const handlePublish = async () => {
   try {
-    await ElMessageBox.confirm('ç¡®å®šè¦å‘å¸ƒæ­¤æ¨¡æ¿å—ï¼Ÿå‘å¸ƒåŽä¸šåŠ¡ç”¨æˆ·å³å¯ä½¿ç”¨æ­¤æ¨¡æ¿ç”ŸæˆæŠ¥è¡¨ã€‚', 'æç¤º', {
+    await ElMessageBox.confirm('È·¶¨Òª·¢²¼´ËÄ£°åÂð£¿·¢²¼ºóÒµÎñÓÃ»§¼´¿ÉÊ¹ÓÃ´ËÄ£°åÉú³É±¨±í¡£', 'ÌáÊ¾', {
       type: 'warning'
     })
     
     if (templateId.value) {
       await publishTemplate(templateId.value)
-      ElMessage.success('å‘å¸ƒæˆåŠŸ')
+      ElMessage.success('·¢²¼³É¹¦')
     } else {
-      ElMessage.warning('è¯·å…ˆä¿å­˜æ¨¡æ¿')
+      ElMessage.warning('ÇëÏÈ±£´æÄ£°å')
     }
   } catch (error) {
-    // å–æ¶ˆ
+    // È¡Ïû
   }
 }
 </script>
@@ -730,7 +729,7 @@ const handlePublish = async () => {
   margin: -24px;
 }
 
-// é¡¶éƒ¨å·¥å…·æ 
+// ¶¥²¿¹¤¾ßÀ¸
 .design-header {
   height: 60px;
   background: $bg-primary;
@@ -800,14 +799,14 @@ const handlePublish = async () => {
   gap: 12px;
 }
 
-// ä¸»å†…å®¹åŒº
+// Ö÷ÄÚÈÝÇø
 .design-main {
   flex: 1;
   display: flex;
   overflow: hidden;
 }
 
-// å·¦ä¾§é¢æ¿
+// ×ó²àÃæ°å
 .left-panel {
   width: 260px;
   background: $bg-primary;
@@ -911,7 +910,7 @@ const handlePublish = async () => {
   padding: 20px;
 }
 
-// ä¸­é—´è®¾è®¡åŒº
+// ÖÐ¼äÉè¼ÆÇø
 .center-panel {
   flex: 1;
   overflow: hidden;
@@ -1002,7 +1001,7 @@ const handlePublish = async () => {
 }
 
 
-// é…ç½®å¡ç‰‡
+// ÅäÖÃ¿¨Æ¬
 .config-card {
   background: $bg-primary;
   border-radius: $radius-xl;
@@ -1053,7 +1052,7 @@ const handlePublish = async () => {
   margin-top: 8px;
 }
 
-// å‚æ•°é…ç½®
+// ²ÎÊýÅäÖÃ
 .params-list {
   display: flex;
   flex-direction: column;
@@ -1093,7 +1092,7 @@ const handlePublish = async () => {
   padding: 40px;
 }
 
-// é¢„è§ˆé¢æ¿
+// Ô¤ÀÀÃæ°å
 .preview-card {
   background: $bg-primary;
   border-radius: $radius-xl;
@@ -1144,7 +1143,7 @@ const handlePublish = async () => {
   }
 }
 
-// å³ä¾§å±žæ€§é¢æ¿
+// ÓÒ²àÊôÐÔÃæ°å
 .right-panel {
   width: 280px;
   background: $bg-primary;
@@ -1167,6 +1166,8 @@ const handlePublish = async () => {
   gap: 8px;
 }
 </style>
+
+
 
 
 
