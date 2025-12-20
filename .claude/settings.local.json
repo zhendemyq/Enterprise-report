@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(start:*)",
+      "mcp__MySQL_Server__list_tables",
+      "mcp__MySQL_Server__connect_db",
+      "mcp__MySQL_Server__query"
+    ]
+  }
+}

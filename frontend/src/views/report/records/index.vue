@@ -217,37 +217,22 @@
       />
     </div>
     
-    <!-- 预览弹窗 -->
-    <el-dialog
-      v-model="previewDialogVisible"
-      title="报表预览"
-      width="90%"
-      top="5vh"
-      class="preview-dialog"
-    >
-      <div class="preview-content">
-        <div v-if="previewLoading" class="preview-loading">
-          <el-icon class="loading-icon"><Loading /></el-icon>
-          <p>正在加载预览...</p>
-        </div>
-        <iframe v-else :src="previewUrl" class="preview-iframe" />
-      </div>
-      <template #footer>
-        <el-button @click="previewDialogVisible = false">关闭</el-button>
-        <el-button type="primary" @click="handleDownloadFromPreview">
-          <el-icon><Download /></el-icon>
-          下载
-        </el-button>
-      </template>
-    </el-dialog>
+    <!-- PDF预览组件 -->
+    <PdfPreview
+      v-model:visible="previewDialogVisible"
+      :url="previewUrl"
+      :title="previewTitle"
+      @error="handlePreviewError"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { pageRecords, deleteRecord, downloadReport, previewReport, regenerateReport } from '@/api/report'
 import { listUserTemplates } from '@/api/template'
+import PdfPreview from '@/components/PdfPreview.vue'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import 'dayjs/locale/zh-cn'
@@ -274,14 +259,22 @@ const total = ref(0)
 
 // 预览
 const previewDialogVisible = ref(false)
-const previewLoading = ref(false)
 const previewUrl = ref('')
+const previewTitle = ref('报表预览')
 const currentRecord = ref(null)
 
 // 初始化
 onMounted(() => {
   loadRecords()
   loadTemplates()
+})
+
+// 清理资源
+onUnmounted(() => {
+  // 释放预览URL资源 (Requirements 3.6)
+  if (previewUrl.value) {
+    window.URL.revokeObjectURL(previewUrl.value)
+  }
 })
 
 // 加载记录列表
@@ -296,27 +289,16 @@ const loadRecords = async () => {
     delete params.dateRange
     
     const res = await pageRecords(params)
-    recordList.value = res.data?.records || mockRecords()
-    total.value = res.data?.total || recordList.value.length
+    recordList.value = res.data?.records || []
+    total.value = res.data?.total || 0
   } catch (error) {
-    recordList.value = mockRecords()
-    total.value = recordList.value.length
+    console.error('加载记录列表失败:', error)
+    recordList.value = []
+    total.value = 0
   } finally {
     loading.value = false
   }
 }
-
-// 模拟数据
-const mockRecords = () => [
-  { id: 1, reportName: '2024年10月销售日报', templateName: '销售日报模板', fileType: 'xlsx', fileSize: 256000, dataRows: 1520, status: 1, duration: 1230, createTime: '2024-10-28 14:30:00', generateParams: { dateRange: ['2024-10-01', '2024-10-28'], region: 'east' } },
-  { id: 2, reportName: '第三季度财务月报', templateName: '财务月报模板', fileType: 'pdf', fileSize: 512000, dataRows: 350, status: 1, duration: 2450, createTime: '2024-10-28 12:15:00', generateParams: { month: '2024-09', department: '' } },
-  { id: 3, reportName: '10月员工考勤统计', templateName: '员工考勤统计', fileType: 'xlsx', fileSize: 0, dataRows: 0, status: 0, duration: null, createTime: '2024-10-28 10:00:00', generateParams: { dateRange: ['2024-10-01', '2024-10-31'] } },
-  { id: 4, reportName: '订单明细报表_20241027', templateName: '订单明细报表', fileType: 'xlsx', fileSize: 0, dataRows: 0, status: 2, duration: 5600, createTime: '2024-10-27 18:45:00', generateParams: { dateRange: ['2024-10-01', '2024-10-27'] }, errorMsg: '数据查询超时，请缩小查询范围' },
-  { id: 5, reportName: '销售趋势分析2024', templateName: '销售趋势分析', fileType: 'pdf', fileSize: 1024000, dataRows: 12, status: 1, duration: 3200, createTime: '2024-10-27 15:20:00', generateParams: { year: '2024', compareYear: '2023' } },
-  { id: 6, reportName: '库存盘点报告_10月', templateName: '库存盘点报告', fileType: 'xlsx', fileSize: 384000, dataRows: 2850, status: 1, duration: 1850, createTime: '2024-10-26 11:30:00', generateParams: { date: '2024-10-26' } },
-  { id: 7, reportName: '华东区销售周报', templateName: '销售周报模板', fileType: 'xlsx', fileSize: 192000, dataRows: 680, status: 1, duration: 980, createTime: '2024-10-25 09:00:00', generateParams: { region: 'east', week: '2024-W43' } },
-  { id: 8, reportName: '人事月度汇总', templateName: '人事报表模板', fileType: 'pdf', fileSize: 448000, dataRows: 156, status: 1, duration: 1560, createTime: '2024-10-24 16:45:00', generateParams: { month: '2024-09' } }
-]
 
 // 加载模板列表
 const loadTemplates = async () => {
@@ -324,12 +306,8 @@ const loadTemplates = async () => {
     const res = await listUserTemplates()
     templateList.value = res.data || []
   } catch (error) {
-    templateList.value = [
-      { id: 1, templateName: '销售日报模板' },
-      { id: 2, templateName: '财务月报模板' },
-      { id: 3, templateName: '员工考勤统计' },
-      { id: 4, templateName: '订单明细报表' }
-    ]
+    console.error('加载模板列表失败:', error)
+    templateList.value = []
   }
 }
 
@@ -351,21 +329,35 @@ const handleReset = () => {
 
 // 预览
 const handlePreview = async (record) => {
+  // 只支持PDF格式预览
+  if (record.fileType !== 'pdf') {
+    ElMessage.warning('仅支持PDF格式文件预览，其他格式请下载后查看')
+    return
+  }
+  
   currentRecord.value = record
-  previewDialogVisible.value = true
-  previewLoading.value = true
+  previewTitle.value = `预览 - ${record.reportName}`
   
   try {
     const res = await previewReport(record.id)
+    // 释放之前的URL
+    if (previewUrl.value) {
+      window.URL.revokeObjectURL(previewUrl.value)
+    }
     // 创建预览URL
     const blob = new Blob([res.data], { type: 'application/pdf' })
     previewUrl.value = window.URL.createObjectURL(blob)
+    previewDialogVisible.value = true
   } catch (error) {
-    ElMessage.info('预览功能需要后端支持')
+    ElMessage.error('加载预览失败，请稍后重试')
     previewUrl.value = ''
-  } finally {
-    previewLoading.value = false
   }
+}
+
+// 预览错误处理
+const handlePreviewError = (error) => {
+  console.error('PDF预览错误:', error)
+  ElMessage.error('PDF加载失败，请检查文件是否有效')
 }
 
 // 下载
@@ -385,14 +377,6 @@ const handleDownload = async (record) => {
     ElMessage.success('下载成功')
   } catch (error) {
     ElMessage.info('下载功能需要后端支持')
-  }
-}
-
-// 从预览下载
-const handleDownloadFromPreview = () => {
-  if (currentRecord.value) {
-    handleDownload(currentRecord.value)
-    previewDialogVisible.value = false
   }
 }
 
@@ -679,39 +663,4 @@ const formatParams = (params) => {
   color: $text-secondary;
 }
 
-// 预览弹窗
-.preview-dialog {
-  :deep(.el-dialog__body) {
-    padding: 0;
-    height: 70vh;
-  }
-}
-
-.preview-content {
-  height: 100%;
-}
-
-.preview-loading {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  
-  .loading-icon {
-    font-size: 48px;
-    color: $primary-color;
-    margin-bottom: 16px;
-  }
-  
-  p {
-    color: $text-secondary;
-  }
-}
-
-.preview-iframe {
-  width: 100%;
-  height: 100%;
-  border: none;
-}
 </style>

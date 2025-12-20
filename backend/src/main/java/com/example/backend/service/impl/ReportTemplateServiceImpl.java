@@ -1,5 +1,6 @@
 package com.example.backend.service.impl;
 
+import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.bean.BeanUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -10,6 +11,7 @@ import com.example.backend.dto.ReportTemplateDTO;
 import com.example.backend.dto.ReportTemplateQueryDTO;
 import com.example.backend.entity.ReportTemplate;
 import com.example.backend.exception.BusinessException;
+import com.example.backend.mapper.ReportPermissionMapper;
 import com.example.backend.mapper.ReportTemplateMapper;
 import com.example.backend.service.ReportTemplateService;
 import com.example.backend.vo.ReportTemplateVO;
@@ -31,6 +33,9 @@ public class ReportTemplateServiceImpl extends ServiceImpl<ReportTemplateMapper,
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private ReportPermissionMapper reportPermissionMapper;
 
     @Override
     public Long createTemplate(ReportTemplateDTO templateDTO) {
@@ -165,14 +170,34 @@ public class ReportTemplateServiceImpl extends ServiceImpl<ReportTemplateMapper,
 
     @Override
     public List<ReportTemplateVO> listUserTemplates() {
-        // TODO: 根据当前用户权限过滤
+        Long userId = StpUtil.getLoginIdAsLong();
+
+        // 查询用户有查看权限的模板ID (permissionType >= 1)
+        List<Long> templateIds = reportPermissionMapper.selectTemplateIdsByUserId(userId, 1);
+
         LambdaQueryWrapper<ReportTemplate> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(ReportTemplate::getStatus, 1)
                 .orderByAsc(ReportTemplate::getSort)
                 .orderByDesc(ReportTemplate::getCreateTime);
+
+        // 如果有权限配置，则按权限过滤；否则返回所有已发布模板（兼容无权限配置情况）
+        if (templateIds != null && !templateIds.isEmpty()) {
+            wrapper.in(ReportTemplate::getId, templateIds);
+        }
+
         return list(wrapper).stream()
                 .map(this::convertToVO)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * 检查用户是否有指定模板的权限
+     * @param templateId 模板ID
+     * @param permissionType 权限类型 1-查看 2-生成 3-下载 4-编辑
+     */
+    public boolean checkPermission(Long templateId, Integer permissionType) {
+        Long userId = StpUtil.getLoginIdAsLong();
+        return reportPermissionMapper.checkUserPermission(userId, templateId, permissionType) > 0;
     }
 
     private ReportTemplateVO convertToVO(ReportTemplate template) {
@@ -188,6 +213,17 @@ public class ReportTemplateServiceImpl extends ServiceImpl<ReportTemplateMapper,
         if (template.getStatus() != null) {
             String[] statusNames = {"草稿", "已发布", "已下线"};
             vo.setStatusName(statusNames[template.getStatus()]);
+        }
+        
+        // 转换参数配置: 将 field 字段映射为 name 字段(兼容前端)
+        if (template.getParamConfig() != null && !template.getParamConfig().isEmpty()) {
+            List<Map<String, Object>> params = template.getParamConfig();
+            for (Map<String, Object> param : params) {
+                if (param.containsKey("field") && !param.containsKey("name")) {
+                    param.put("name", param.get("field"));
+                }
+            }
+            vo.setParams(params);
         }
         
         return vo;

@@ -137,7 +137,7 @@
                 <span class="template-category">{{ template.categoryName }}</span>
               </div>
               <div class="template-count">
-                <span>{{ template.useCount }}</span>
+                <span>{{ template.usageCount || 0 }}</span>
                 <span class="count-label">次使用</span>
               </div>
             </div>
@@ -149,7 +149,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import VChart from 'vue-echarts'
@@ -158,6 +158,7 @@ import { CanvasRenderer } from 'echarts/renderers'
 import { LineChart, BarChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent, LegendComponent } from 'echarts/components'
 import dayjs from 'dayjs'
+import { getStats, getRecentReports, getPopularTemplates, getReportTrend } from '@/api/dashboard'
 
 use([CanvasRenderer, LineChart, BarChart, GridComponent, TooltipComponent, LegendComponent])
 
@@ -189,10 +190,10 @@ const currentDate = computed(() => {
 
 // 统计数据
 const statsData = ref([
-  { title: '报表模板', value: '24', icon: 'Files', color: '#007AFF', trend: 12 },
-  { title: '今日生成', value: '156', icon: 'Printer', color: '#34C759', trend: 8 },
-  { title: '定时任务', value: '12', icon: 'Timer', color: '#FF9500', trend: -3 },
-  { title: '数据源', value: '6', icon: 'Connection', color: '#5856D6', trend: 5 }
+  { title: '报表模板', value: '0', icon: 'Files', color: '#007AFF', trend: 0 },
+  { title: '今日生成', value: '0', icon: 'Printer', color: '#34C759', trend: 0 },
+  { title: '定时任务', value: '0', icon: 'Timer', color: '#FF9500', trend: 0 },
+  { title: '数据源', value: '0', icon: 'Connection', color: '#5856D6', trend: 0 }
 ])
 
 // 快捷操作
@@ -205,6 +206,16 @@ const quickActions = [
 
 // 图表周期
 const chartPeriod = ref('week')
+const trendData = ref({
+  labels: [],
+  generateData: [],
+  downloadData: []
+})
+
+// 监听图表周期变化
+watch(chartPeriod, () => {
+  loadTrendData()
+})
 
 // 图表配置
 const chartOption = computed(() => ({
@@ -235,7 +246,7 @@ const chartOption = computed(() => ({
   },
   xAxis: {
     type: 'category',
-    data: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'],
+    data: trendData.value.labels,
     axisLine: { show: false },
     axisTick: { show: false },
     axisLabel: { color: '#86868B' }
@@ -254,7 +265,7 @@ const chartOption = computed(() => ({
       smooth: true,
       symbol: 'circle',
       symbolSize: 8,
-      data: [45, 52, 38, 65, 72, 48, 56],
+      data: trendData.value.generateData,
       lineStyle: { width: 3, color: '#007AFF' },
       itemStyle: { color: '#007AFF', borderWidth: 2, borderColor: '#fff' },
       areaStyle: {
@@ -274,7 +285,7 @@ const chartOption = computed(() => ({
       smooth: true,
       symbol: 'circle',
       symbolSize: 8,
-      data: [32, 40, 28, 55, 60, 38, 42],
+      data: trendData.value.downloadData,
       lineStyle: { width: 3, color: '#34C759' },
       itemStyle: { color: '#34C759', borderWidth: 2, borderColor: '#fff' },
       areaStyle: {
@@ -292,21 +303,79 @@ const chartOption = computed(() => ({
 }))
 
 // 最近报表
-const recentReports = ref([
-  { id: 1, reportName: '2024年10月销售报表', templateName: '销售月报模板', fileType: 'xlsx', status: 1, createTime: '2024-10-28 14:30:00' },
-  { id: 2, reportName: '第三季度财务报表', templateName: '财务季报模板', fileType: 'pdf', status: 1, createTime: '2024-10-28 12:15:00' },
-  { id: 3, reportName: '员工考勤统计', templateName: '考勤月报模板', fileType: 'xlsx', status: 0, createTime: '2024-10-28 10:00:00' },
-  { id: 4, reportName: '库存盘点报告', templateName: '库存报表模板', fileType: 'xlsx', status: 2, createTime: '2024-10-27 18:45:00' }
-])
+const recentReports = ref([])
 
 // 热门模板
-const popularTemplates = ref([
-  { id: 1, templateName: '销售日报模板', categoryName: '销售报表', useCount: 1256 },
-  { id: 2, templateName: '财务月报模板', categoryName: '财务报表', useCount: 986 },
-  { id: 3, templateName: '考勤统计模板', categoryName: '人事报表', useCount: 754 },
-  { id: 4, templateName: '订单明细模板', categoryName: '运营报表', useCount: 621 },
-  { id: 5, templateName: '库存盘点模板', categoryName: '运营报表', useCount: 489 }
-])
+const popularTemplates = ref([])
+
+// 加载统计数据
+const loadStats = async () => {
+  try {
+    const res = await getStats()
+    if (res.data) {
+      statsData.value = [
+        { title: '报表模板', value: String(res.data.templateCount || 0), icon: 'Files', color: '#007AFF', trend: 0 },
+        { title: '今日生成', value: String(res.data.todayReportCount || 0), icon: 'Printer', color: '#34C759', trend: 0 },
+        { title: '定时任务', value: String(res.data.scheduleCount || 0), icon: 'Timer', color: '#FF9500', trend: 0 },
+        { title: '数据源', value: String(res.data.datasourceCount || 0), icon: 'Connection', color: '#5856D6', trend: 0 }
+      ]
+    }
+  } catch (error) {
+    console.error('加载统计数据失败:', error)
+  }
+}
+
+// 加载最近报表
+const loadRecentReports = async () => {
+  try {
+    const res = await getRecentReports(5)
+    recentReports.value = res.data || []
+  } catch (error) {
+    console.error('加载最近报表失败:', error)
+    recentReports.value = []
+  }
+}
+
+// 加载热门模板
+const loadPopularTemplates = async () => {
+  try {
+    const res = await getPopularTemplates(5)
+    popularTemplates.value = res.data || []
+  } catch (error) {
+    console.error('加载热门模板失败:', error)
+    popularTemplates.value = []
+  }
+}
+
+// 加载趋势数据
+const loadTrendData = async () => {
+  try {
+    const res = await getReportTrend(chartPeriod.value)
+    if (res.data) {
+      trendData.value = {
+        labels: res.data.dates || [],
+        generateData: res.data.counts || [],
+        downloadData: [] // 后端暂未返回下载数据，使用空数组
+      }
+    }
+  } catch (error) {
+    console.error('加载趋势数据失败:', error)
+    // 设置默认空数据
+    trendData.value = {
+      labels: [],
+      generateData: [],
+      downloadData: []
+    }
+  }
+}
+
+// 初始化
+onMounted(() => {
+  loadStats()
+  loadRecentReports()
+  loadPopularTemplates()
+  loadTrendData()
+})
 
 // 格式化时间
 const formatTime = (time) => {

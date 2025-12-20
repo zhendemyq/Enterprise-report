@@ -161,6 +161,12 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { 
+  getCategoryTree, 
+  createCategory, 
+  updateCategory, 
+  deleteCategory 
+} from '@/api/category'
 
 // 数据
 const loading = ref(false)
@@ -240,63 +246,11 @@ onMounted(() => {
 const loadCategories = async () => {
   loading.value = true
   try {
-    // 模拟数据
-    categoryList.value = [
-      { 
-        id: 1, 
-        categoryName: '财务报表', 
-        categoryCode: 'finance', 
-        parentId: 0,
-        icon: 'Money',
-        sort: 1, 
-        status: 1,
-        description: '财务相关报表',
-        children: [
-          { id: 11, categoryName: '月度报表', categoryCode: 'finance_monthly', parentId: 1, sort: 1, status: 1 },
-          { id: 12, categoryName: '季度报表', categoryCode: 'finance_quarterly', parentId: 1, sort: 2, status: 1 },
-          { id: 13, categoryName: '年度报表', categoryCode: 'finance_yearly', parentId: 1, sort: 3, status: 1 }
-        ]
-      },
-      { 
-        id: 2, 
-        categoryName: '销售报表', 
-        categoryCode: 'sales', 
-        parentId: 0,
-        icon: 'TrendCharts',
-        sort: 2, 
-        status: 1,
-        description: '销售相关报表',
-        children: [
-          { id: 21, categoryName: '日报', categoryCode: 'sales_daily', parentId: 2, sort: 1, status: 1 },
-          { id: 22, categoryName: '周报', categoryCode: 'sales_weekly', parentId: 2, sort: 2, status: 1 },
-          { id: 23, categoryName: '区域报表', categoryCode: 'sales_region', parentId: 2, sort: 3, status: 1 }
-        ]
-      },
-      { 
-        id: 3, 
-        categoryName: '运营报表', 
-        categoryCode: 'operation', 
-        parentId: 0,
-        icon: 'DataAnalysis',
-        sort: 3, 
-        status: 1,
-        description: '运营相关报表',
-        children: []
-      },
-      { 
-        id: 4, 
-        categoryName: '人事报表', 
-        categoryCode: 'hr', 
-        parentId: 0,
-        icon: 'User',
-        sort: 4, 
-        status: 1,
-        description: '人事相关报表',
-        children: []
-      }
-    ]
+    const res = await getCategoryTree()
+    categoryList.value = res.data || []
   } catch (error) {
-    console.error(error)
+    console.error('加载分类失败:', error)
+    categoryList.value = []
   } finally {
     loading.value = false
   }
@@ -343,10 +297,13 @@ const handleDelete = async (row) => {
       '警告',
       { type: 'error', confirmButtonText: '删除' }
     )
+    await deleteCategory(row.id)
     ElMessage.success('删除成功')
     loadCategories()
   } catch (error) {
-    // 取消
+    if (error !== 'cancel') {
+      console.error('删除失败:', error)
+    }
   }
 }
 
@@ -363,12 +320,17 @@ const handleSubmit = async () => {
     if (valid) {
       submitLoading.value = true
       try {
-        await new Promise(resolve => setTimeout(resolve, 500))
-        ElMessage.success(formData.id ? '更新成功' : '创建成功')
+        if (formData.id) {
+          await updateCategory(formData.id, formData)
+          ElMessage.success('更新成功')
+        } else {
+          await createCategory(formData)
+          ElMessage.success('创建成功')
+        }
         dialogVisible.value = false
         loadCategories()
       } catch (error) {
-        console.error(error)
+        console.error('提交失败:', error)
       } finally {
         submitLoading.value = false
       }

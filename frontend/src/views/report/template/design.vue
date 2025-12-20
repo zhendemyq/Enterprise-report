@@ -103,41 +103,33 @@
         <!-- 设计面板 -->
         <div v-show="activeTab === 'design'" class="design-area">
           <div class="spreadsheet-container" ref="spreadsheetRef">
-            <!-- Univer 表格设计器区域 -->
-            <div class="spreadsheet-placeholder">
-              <div class="placeholder-content">
-                <el-icon :size="64"><Grid /></el-icon>
-                <h3>报表设计器</h3>
-                <p>拖拽组件或字段到此处进行报表模板设计</p>
-                <p class="hint">支持 Excel 风格的表格设计，包括合并单元格、公式计算等</p>
-              </div>
-              
-              <!-- 模拟表格 -->
-              <div class="mock-spreadsheet">
-                <table>
-                  <thead>
-                    <tr>
-                      <th class="row-header"></th>
-                      <th v-for="col in columns" :key="col">{{ col }}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="row in 20" :key="row">
-                      <td class="row-header">{{ row }}</td>
-                      <td 
-                        v-for="col in columns" 
-                        :key="col"
-                        class="cell"
-                        :class="{ 'selected': selectedCell === `${col}${row}` }"
-                        @click="selectCell(`${col}${row}`)"
-                      >
-                        {{ getCellContent(col, row) }}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <!-- Univer 电子表格设计器 -->
+            <UniverSpreadsheet
+              ref="univerRef"
+              :workbook-data="workbookData"
+              :fields="fieldList"
+              @ready="handleUniverReady"
+              @change="handleSpreadsheetChange"
+            />
+          </div>
+          
+          <!-- 设计器工具提示 -->
+          <div class="design-tips" v-if="showDesignTips">
+            <el-alert 
+              title="设计器使用提示" 
+              type="info" 
+              closable
+              @close="showDesignTips = false"
+            >
+              <template #default>
+                <ul class="tips-list">
+                  <li>从左侧拖拽字段到表格单元格进行数据绑定</li>
+                  <li>使用 <code>${fieldName}</code> 格式插入动态字段</li>
+                  <li>支持Excel公式，如 SUM、AVERAGE 等</li>
+                  <li>可合并单元格、设置样式和格式化</li>
+                </ul>
+              </template>
+            </el-alert>
           </div>
         </div>
         
@@ -383,6 +375,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getTemplateDetail, saveTemplateDesign, publishTemplate } from '@/api/template'
 import { listDatasources, executeQuery } from '@/api/datasource'
+import UniverSpreadsheet from '@/components/UniverSpreadsheet.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -396,8 +389,11 @@ const templateType = ref(1)
 const activeTab = ref('design')
 const saveLoading = ref(false)
 
-// 设计器相关
+// Univer设计器相关
 const spreadsheetRef = ref(null)
+const univerRef = ref(null)
+const showDesignTips = ref(true)
+const workbookData = ref(null)
 const selectedCell = ref('')
 const columns = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J']
 
@@ -428,20 +424,7 @@ const fontColor = ref('#000000')
 const pageSize = ref(1000)
 const enableCache = ref(true)
 
-// 模拟单元格数据
-const cellData = reactive({
-  'A1': '销售日报表',
-  'A3': '日期',
-  'B3': '产品',
-  'C3': '销售额',
-  'D3': '数量',
-  'E3': '客户',
-  'A4': '${startDate}',
-  'B4': '${productName}',
-  'C4': '${amount}',
-  'D4': '${quantity}',
-  'E4': '${customerName}'
-})
+const cellData = reactive({})
 
 // 初始化
 onMounted(async () => {
@@ -457,9 +440,8 @@ const loadDatasources = async () => {
     const res = await listDatasources()
     datasourceList.value = res.data || []
   } catch (error) {
-    datasourceList.value = [
-      { id: 1, datasourceName: '本地MySQL' }
-    ]
+    datasourceList.value = []
+    ElMessage.error('???????')
   }
 }
 
@@ -487,16 +469,8 @@ const handleDatasourceChange = async () => {
     fieldList.value = []
     return
   }
-  
-  // 模拟字段列表
-  fieldList.value = [
-    { name: 'id', type: 'bigint' },
-    { name: 'create_time', type: 'datetime' },
-    { name: 'product_name', type: 'varchar' },
-    { name: 'amount', type: 'decimal' },
-    { name: 'quantity', type: 'int' },
-    { name: 'customer_name', type: 'varchar' }
-  ]
+
+  fieldList.value = []
 }
 
 // 格式化SQL
@@ -532,13 +506,9 @@ const handleExecuteSql = async () => {
     }
     ElMessage.success('查询成功')
   } catch (error) {
-    // 模拟数据
-    queryResult.value = [
-      { id: 1, product_name: '产品A', amount: 1500.00, quantity: 10, customer_name: '客户1' },
-      { id: 2, product_name: '产品B', amount: 2300.00, quantity: 15, customer_name: '客户2' },
-      { id: 3, product_name: '产品C', amount: 800.00, quantity: 5, customer_name: '客户3' }
-    ]
-    queryColumns.value = ['id', 'product_name', 'amount', 'quantity', 'customer_name']
+    queryResult.value = []
+    queryColumns.value = []
+    ElMessage.error('????')
   }
 }
 
@@ -568,14 +538,36 @@ const selectCell = (cell) => {
   selectedCell.value = cell
 }
 
+// Univer设计器就绪事件
+const handleUniverReady = ({ univer, workbook }) => {
+  console.log('Univer设计器已就绪', univer, workbook)
+}
+
+// 电子表格变化事件
+const handleSpreadsheetChange = (data) => {
+  console.log('电子表格数据变化', data)
+}
+
 // 拖拽开始
 const handleDragStart = (comp) => {
   // 处理组件拖拽
 }
 
-// 字段拖拽开始
+// 字段拖拽开始 - 插入到当前选中单元格
 const handleFieldDragStart = (field) => {
-  // 处理字段拖拽
+  // 将字段名存储到拖拽数据中
+  event.dataTransfer.setData('text/plain', `\${${field.name}}`)
+  event.dataTransfer.setData('field-name', field.name)
+}
+
+// 处理字段放置
+const handleFieldDrop = (event) => {
+  event.preventDefault()
+  const fieldName = event.dataTransfer.getData('field-name')
+  if (fieldName && univerRef.value) {
+    univerRef.value.insertFieldPlaceholder(fieldName)
+    ElMessage.success(`已插入字段: ${fieldName}`)
+  }
 }
 
 // 返回
@@ -597,12 +589,19 @@ const generatePreview = () => {
 const handleSave = async () => {
   saveLoading.value = true
   try {
+    // 获取Univer设计器数据
+    let spreadsheetData = null
+    if (univerRef.value) {
+      spreadsheetData = univerRef.value.exportToJson()
+    }
+    
     const designJson = {
       templateName: templateName.value,
       templateType: templateType.value,
       datasourceId: datasourceId.value,
       querySql: querySql.value,
       paramConfig: JSON.stringify(paramList.value),
+      spreadsheetData: spreadsheetData, // Univer设计器数据
       cellData: cellData,
       styleConfig: {
         fontSize: fontSize.value,
@@ -845,8 +844,38 @@ const handlePublish = async () => {
   padding: 20px;
 }
 
+.design-area {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.design-tips {
+  flex-shrink: 0;
+  
+  .tips-list {
+    margin: 8px 0 0;
+    padding-left: 20px;
+    
+    li {
+      margin: 4px 0;
+      font-size: 13px;
+      color: #606266;
+    }
+    
+    code {
+      background: rgba(64, 158, 255, 0.1);
+      color: #409eff;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: monospace;
+    }
+  }
+}
+
 .spreadsheet-container {
-  height: 100%;
+  flex: 1;
+  min-height: 400px;
   background: $bg-primary;
   border-radius: $radius-xl;
   box-shadow: $shadow-sm;
@@ -888,58 +917,6 @@ const handlePublish = async () => {
   }
 }
 
-.mock-spreadsheet {
-  flex: 1;
-  overflow: auto;
-  
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 13px;
-  }
-  
-  th, td {
-    border: 1px solid $border-color;
-    padding: 8px 12px;
-    text-align: left;
-    min-width: 100px;
-  }
-  
-  th {
-    background: $gray-50;
-    font-weight: $font-weight-medium;
-    color: $text-secondary;
-    position: sticky;
-    top: 0;
-    z-index: 1;
-  }
-  
-  .row-header {
-    background: $gray-50;
-    font-weight: $font-weight-medium;
-    color: $text-secondary;
-    text-align: center;
-    min-width: 50px;
-    width: 50px;
-    position: sticky;
-    left: 0;
-  }
-  
-  .cell {
-    cursor: cell;
-    transition: background $transition-fast;
-    
-    &:hover {
-      background: rgba($primary-color, 0.04);
-    }
-    
-    &.selected {
-      background: rgba($primary-color, 0.1);
-      outline: 2px solid $primary-color;
-      outline-offset: -2px;
-    }
-  }
-}
 
 // 配置卡片
 .config-card {

@@ -483,24 +483,14 @@ onMounted(() => {
 const loadTemplates = async () => {
   try {
     const res = await pageTemplates(queryParams)
-    templateList.value = res.data?.records || mockTemplates()
-    total.value = res.data?.total || templateList.value.length
+    templateList.value = res.data?.records || []
+    total.value = res.data?.total || 0
   } catch (error) {
-    // 使用模拟数据
-    templateList.value = mockTemplates()
-    total.value = templateList.value.length
+    console.error('加载模板列表失败:', error)
+    templateList.value = []
+    total.value = 0
   }
 }
-
-// 模拟数据
-const mockTemplates = () => [
-  { id: 1, templateName: '销售日报模板', templateCode: 'sales_daily', templateType: 1, categoryName: '销售报表', status: 1, version: 3, description: '每日销售数据统计报表', updateTime: '2024-10-28 14:30:00' },
-  { id: 2, templateName: '财务月报模板', templateCode: 'finance_monthly', templateType: 2, categoryName: '财务报表', status: 1, version: 5, description: '月度财务汇总报表', updateTime: '2024-10-27 10:00:00' },
-  { id: 3, templateName: '员工考勤统计', templateCode: 'attendance_stats', templateType: 3, categoryName: '人事报表', status: 0, version: 1, description: '员工考勤分组统计表', updateTime: '2024-10-26 16:45:00' },
-  { id: 4, templateName: '订单明细报表', templateCode: 'order_detail', templateType: 1, categoryName: '运营报表', status: 1, version: 2, description: '订单详情明细表', updateTime: '2024-10-25 09:20:00' },
-  { id: 5, templateName: '库存盘点报告', templateCode: 'inventory_check', templateType: 2, categoryName: '运营报表', status: 2, version: 4, description: '仓库库存盘点汇总', updateTime: '2024-10-24 11:30:00' },
-  { id: 6, templateName: '销售趋势分析', templateCode: 'sales_trend', templateType: 4, categoryName: '销售报表', status: 1, version: 1, description: '销售数据图表分析', updateTime: '2024-10-23 15:00:00' }
-]
 
 // 加载数据源列表
 const loadDatasources = async () => {
@@ -508,9 +498,8 @@ const loadDatasources = async () => {
     const res = await listDatasources()
     datasourceList.value = res.data || []
   } catch (error) {
-    datasourceList.value = [
-      { id: 1, datasourceName: '本地MySQL' }
-    ]
+    console.error('加载数据源列表失败:', error)
+    datasourceList.value = []
   }
 }
 

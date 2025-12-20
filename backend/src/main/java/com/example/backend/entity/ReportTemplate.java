@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -66,7 +67,7 @@ public class ReportTemplate extends BaseEntity {
      * 参数配置（JSON格式）
      */
     @TableField(typeHandler = JacksonTypeHandler.class)
-    private Map<String, Object> paramConfig;
+    private List<Map<String, Object>> paramConfig;
 
     /**
      * 样式配置（JSON格式）

@@ -18,12 +18,15 @@ import com.example.backend.entity.ReportRecord;
 import com.example.backend.entity.ReportTemplate;
 import com.example.backend.exception.BusinessException;
 import com.example.backend.mapper.ReportRecordMapper;
+import com.example.backend.service.PdfConvertService;
 import com.example.backend.service.ReportDatasourceService;
 import com.example.backend.service.ReportGenerateService;
 import com.example.backend.service.ReportTemplateService;
 import com.example.backend.vo.ReportRecordVO;
 import jakarta.servlet.http.HttpServletResponse;
 import org.apache.commons.lang3.StringUtils;
+import org.jxls.common.Context;
+import org.jxls.util.JxlsHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -53,6 +56,9 @@ public class ReportGenerateServiceImpl extends ServiceImpl<ReportRecordMapper, R
 
     @Autowired
     private ReportDatasourceService datasourceService;
+
+    @Autowired
+    private PdfConvertService pdfConvertService;
 
     @Value("${report.storage.path:./upload/reports}")
     private String storagePath;
@@ -185,11 +191,43 @@ public class ReportGenerateServiceImpl extends ServiceImpl<ReportRecordMapper, R
         }
 
         try {
-            response.setContentType("application/pdf");
-            response.setHeader("Content-Disposition", "inline; filename=" + 
-                    URLEncoder.encode(record.getReportName() + ".pdf", StandardCharsets.UTF_8));
-            IoUtil.copy(new FileInputStream(file), response.getOutputStream());
+            String fileType = record.getFileType().toLowerCase();
+            String contentType;
+            String extension;
+
+            switch (fileType) {
+                case "pdf":
+                    contentType = "application/pdf";
+                    extension = ".pdf";
+                    break;
+                case "xlsx":
+                    contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+                    extension = ".xlsx";
+                    break;
+                case "csv":
+                    contentType = "text/csv; charset=UTF-8";
+                    extension = ".csv";
+                    break;
+                default:
+                    throw new BusinessException("不支持的文件格式预览: " + fileType);
+            }
+
+            response.setContentType(contentType);
+
+            String encodedFileName = URLEncoder.encode(record.getReportName() + extension, StandardCharsets.UTF_8)
+                    .replace("+", "%20");
+            response.setHeader("Content-Disposition", "inline; filename=\"" + encodedFileName + "\"");
+            response.setContentLengthLong(file.length());
+            response.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+            response.setHeader("Pragma", "no-cache");
+            response.setDateHeader("Expires", 0);
+
+            try (InputStream inputStream = new BufferedInputStream(new FileInputStream(file))) {
+                IoUtil.copy(inputStream, response.getOutputStream());
+                response.getOutputStream().flush();
+            }
         } catch (IOException e) {
+            logger.error("预览失败: recordId={}, file={}", recordId, file.getAbsolutePath(), e);
             throw new BusinessException("预览失败: " + e.getMessage());
         }
     }
@@ -298,16 +336,98 @@ public class ReportGenerateServiceImpl extends ServiceImpl<ReportRecordMapper, R
         String filePath = storagePath + File.separator + fileName;
 
         if ("xlsx".equals(fileType)) {
-            generateExcel(template, dataList, filePath);
+            // 如果有模板文件，使用Jxls渲染；否则使用EasyExcel
+            if (StringUtils.isNotBlank(template.getTemplateFile())) {
+                generateExcelWithJxls(template, dataList, filePath);
+            } else {
+                generateExcel(template, dataList, filePath);
+            }
         } else if ("pdf".equals(fileType)) {
             // 先生成Excel再转PDF
             String tempExcel = storagePath + File.separator + UUID.randomUUID().toString() + ".xlsx";
-            generateExcel(template, dataList, tempExcel);
-            convertToPdf(tempExcel, filePath);
-            FileUtil.del(tempExcel);
+            if (StringUtils.isNotBlank(template.getTemplateFile())) {
+                generateExcelWithJxls(template, dataList, tempExcel);
+            } else {
+                generateExcel(template, dataList, tempExcel);
+            }
+
+            // 转换PDF，成功后清理临时文件，失败时保留用于调试
+            convertToPdfWithCleanup(tempExcel, filePath);
+        } else if ("csv".equals(fileType)) {
+            generateCsv(dataList, filePath);
         }
 
         return fileName;
+    }
+
+    /**
+     * 使用Jxls模板引擎生成Excel
+     * 模板中使用 jx:each 标签定义循环区域
+     * 示例: jx:each(items="dataList" var="item" lastCell="D2")
+     */
+    private void generateExcelWithJxls(ReportTemplate template, List<Map<String, Object>> dataList, String outputPath) {
+        String templatePath = storagePath + File.separator + template.getTemplateFile();
+        File templateFile = new File(templatePath);
+
+        if (!templateFile.exists()) {
+            throw new BusinessException(ResultCode.TEMPLATE_FILE_NOT_FOUND, "模板文件不存在: " + template.getTemplateFile());
+        }
+
+        try (InputStream is = new FileInputStream(templateFile);
+             OutputStream os = new FileOutputStream(outputPath)) {
+
+            Context context = new Context();
+            context.putVar("dataList", dataList);
+            context.putVar("reportName", template.getTemplateName());
+            context.putVar("generateTime", LocalDateTime.now());
+
+            // 添加参数配置中的变量
+            if (template.getParamConfig() != null) {
+                for (Map<String, Object> param : template.getParamConfig()) {
+                    String paramName = (String) param.get("name");
+                    Object paramValue = param.get("value");
+                    if (StringUtils.isNotBlank(paramName) && paramValue != null) {
+                        context.putVar(paramName, paramValue);
+                    }
+                }
+            }
+
+            JxlsHelper.getInstance().processTemplate(is, os, context);
+            logger.info("Jxls模板渲染完成: template={}, output={}", templatePath, outputPath);
+
+        } catch (IOException e) {
+            logger.error("Jxls模板渲染失败: template={}", templatePath, e);
+            throw new BusinessException(ResultCode.REPORT_GENERATE_ERROR, "模板渲染失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 将Excel转换为PDF，并处理临时文件清理
+     * 成功时删除临时Excel文件，失败时保留用于调试
+     * @param tempExcelPath 临时Excel文件路径
+     * @param pdfPath PDF输出路径
+     * @throws BusinessException 转换失败时抛出PDF_CONVERT_ERROR
+     */
+    private void convertToPdfWithCleanup(String tempExcelPath, String pdfPath) {
+        try {
+            convertToPdf(tempExcelPath, pdfPath);
+            // 转换成功，删除临时Excel文件
+            boolean deleted = FileUtil.del(tempExcelPath);
+            if (deleted) {
+                logger.info("临时Excel文件已清理: {}", tempExcelPath);
+            } else {
+                logger.warn("临时Excel文件清理失败: {}", tempExcelPath);
+            }
+        } catch (BusinessException e) {
+            // 转换失败，保留临时文件用于调试
+            logger.error("PDF转换失败，保留临时Excel文件用于调试: {}", tempExcelPath, e);
+            // Re-throw with specific PDF conversion error code
+            throw new BusinessException(ResultCode.PDF_CONVERT_ERROR, e.getMessage());
+        } catch (Exception e) {
+            // 转换失败，保留临时文件用于调试
+            logger.error("PDF转换失败，保留临时Excel文件用于调试: {}", tempExcelPath, e);
+            throw new BusinessException(ResultCode.PDF_CONVERT_ERROR, "PDF转换失败: " + e.getMessage());
+        }
     }
 
     /**
@@ -337,13 +457,52 @@ public class ReportGenerateServiceImpl extends ServiceImpl<ReportRecordMapper, R
     }
 
     /**
+     * 生成CSV文件
+     */
+    private void generateCsv(List<Map<String, Object>> dataList, String filePath) {
+        try (java.io.PrintWriter writer = new java.io.PrintWriter(new java.io.OutputStreamWriter(
+                new java.io.FileOutputStream(filePath), java.nio.charset.StandardCharsets.UTF_8))) {
+            // 写入BOM以支持Excel正确识别UTF-8
+            writer.write('\ufeff');
+
+            if (dataList.isEmpty()) {
+                return;
+            }
+
+            // 写入表头
+            List<String> headers = new java.util.ArrayList<>(dataList.get(0).keySet());
+            writer.println(String.join(",", headers));
+
+            // 写入数据行
+            for (Map<String, Object> row : dataList) {
+                List<String> values = headers.stream()
+                        .map(h -> {
+                            Object val = row.get(h);
+                            if (val == null) return "";
+                            String str = val.toString();
+                            // 处理包含逗号、引号或换行的值
+                            if (str.contains(",") || str.contains("\"") || str.contains("\n")) {
+                                return "\"" + str.replace("\"", "\"\"") + "\"";
+                            }
+                            return str;
+                        })
+                        .toList();
+                writer.println(String.join(",", values));
+            }
+        } catch (java.io.IOException e) {
+            throw new BusinessException("CSV文件生成失败: " + e.getMessage());
+        }
+    }
+
+    /**
      * 将Excel转换为PDF
+     * @param excelPath Excel文件路径
+     * @param pdfPath PDF输出路径
      */
     private void convertToPdf(String excelPath, String pdfPath) {
-        // TODO: 实现Excel转PDF功能，可以使用iText或其他库
-        // 这里简单复制文件作为示例
-        logger.warn("Excel转PDF功能待实现，当前仅复制文件");
-        FileUtil.copy(excelPath, pdfPath, true);
+        logger.info("开始将Excel转换为PDF: {} -> {}", excelPath, pdfPath);
+        pdfConvertService.convertExcelToPdf(excelPath, pdfPath);
+        logger.info("PDF转换完成: {}", pdfPath);
     }
 
     private ReportRecordVO convertToVO(ReportRecord record) {

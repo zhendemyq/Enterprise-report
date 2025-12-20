@@ -28,7 +28,7 @@
             <!-- 单个菜单项 -->
             <el-menu-item 
               v-if="!route.children || route.children.length === 1"
-              :index="route.children ? route.children[0].path : route.path"
+              :index="getMenuIndex(route)"
               class="menu-item"
             >
               <el-icon v-if="getMenuIcon(route)">
@@ -210,6 +210,15 @@ const getMenuTitle = (route) => {
     return route.children[0].meta?.title || route.meta?.title
   }
   return route.meta?.title
+}
+
+// 获取单菜单项的路由路径
+const getMenuIndex = (route) => {
+  if (route.children?.length === 1) {
+    const basePath = route.path === '/' ? '' : route.path
+    return basePath + '/' + route.children[0].path
+  }
+  return route.path
 }
 
 // 切换侧边栏

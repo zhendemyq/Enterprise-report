@@ -3,6 +3,7 @@ package com.example.backend.vo;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -37,7 +38,12 @@ public class ReportTemplateVO {
 
     private String querySql;
 
-    private Map<String, Object> paramConfig;
+    private List<Map<String, Object>> paramConfig;
+    
+    /**
+     * 参数配置(前端兼容字段,与paramConfig相同)
+     */
+    private List<Map<String, Object>> params;
 
     private Map<String, Object> styleConfig;
 
@@ -56,4 +62,9 @@ public class ReportTemplateVO {
     private LocalDateTime createTime;
 
     private LocalDateTime updateTime;
+
+    /**
+     * 使用次数（仪表盘统计用）
+     */
+    private Integer usageCount;
 }

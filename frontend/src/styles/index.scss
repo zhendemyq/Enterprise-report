@@ -1,6 +1,7 @@
 // ===================================
 // 全局样式 - Apple 风格
 // ===================================
+@use 'sass:color';
 @use './variables.scss' as *;
 
 // 重置样式
@@ -92,15 +93,15 @@ a {
     
     &:hover,
     &:focus {
-      background: lighten($primary-color, 8%) !important;
-      border-color: lighten($primary-color, 8%) !important;
+      background: color.adjust($primary-color, $lightness: 8%) !important;
+      border-color: color.adjust($primary-color, $lightness: 8%) !important;
       transform: translateY(-1px);
       box-shadow: $shadow-md;
     }
     
     &:active {
       transform: translateY(0);
-      background: darken($primary-color, 4%) !important;
+      background: color.adjust($primary-color, $lightness: -4%) !important;
     }
   }
   

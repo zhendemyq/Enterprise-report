@@ -303,6 +303,8 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import dayjs from 'dayjs'
+import { pageUsers, createUser, updateUser, deleteUser, resetPassword } from '@/api/user'
+import { listRoles } from '@/api/role'
 
 // 查询参数
 const queryParams = reactive({
@@ -397,16 +399,13 @@ onMounted(() => {
 const loadUsers = async () => {
   loading.value = true
   try {
-    // 模拟数据
-    userList.value = [
-      { id: 1, username: 'admin', nickname: '超级管理员', email: 'admin@example.com', phone: '13800138000', status: 1, roles: [{ id: 1, roleName: '管理员' }], lastLoginTime: '2024-10-28 09:30:00', createTime: '2024-01-01 00:00:00' },
-      { id: 2, username: 'zhangsan', nickname: '张三', email: 'zhangsan@example.com', phone: '13800138001', status: 1, roles: [{ id: 2, roleName: '普通用户' }], lastLoginTime: '2024-10-27 14:20:00', createTime: '2024-03-15 10:00:00' },
-      { id: 3, username: 'lisi', nickname: '李四', email: 'lisi@example.com', phone: '13800138002', status: 1, roles: [{ id: 2, roleName: '普通用户' }, { id: 3, roleName: '报表管理员' }], lastLoginTime: '2024-10-28 08:15:00', createTime: '2024-05-20 16:30:00' },
-      { id: 4, username: 'wangwu', nickname: '王五', email: 'wangwu@example.com', phone: '13800138003', status: 0, roles: [{ id: 2, roleName: '普通用户' }], lastLoginTime: null, createTime: '2024-08-10 09:00:00' }
-    ]
-    total.value = userList.value.length
+    const res = await pageUsers(queryParams)
+    userList.value = res.data?.records || []
+    total.value = res.data?.total || 0
   } catch (error) {
-    console.error(error)
+    console.error('加载用户列表失败:', error)
+    userList.value = []
+    total.value = 0
   } finally {
     loading.value = false
   }
@@ -414,11 +413,13 @@ const loadUsers = async () => {
 
 // 加载角色列表
 const loadRoles = async () => {
-  roleList.value = [
-    { id: 1, roleName: '管理员' },
-    { id: 2, roleName: '普通用户' },
-    { id: 3, roleName: '报表管理员' }
-  ]
+  try {
+    const res = await listRoles()
+    roleList.value = res.data || []
+  } catch (error) {
+    console.error('加载角色列表失败:', error)
+    roleList.value = []
+  }
 }
 
 // 搜索
@@ -459,10 +460,13 @@ const handleDelete = async (row) => {
       '警告',
       { type: 'error', confirmButtonText: '删除' }
     )
+    await deleteUser(row.id)
     ElMessage.success('删除成功')
     loadUsers()
   } catch (error) {
-    // 取消
+    if (error !== 'cancel') {
+      console.error('删除失败:', error)
+    }
   }
 }
 
@@ -481,11 +485,11 @@ const handleResetPwdSubmit = async () => {
     if (valid) {
       resetPwdLoading.value = true
       try {
-        await new Promise(resolve => setTimeout(resolve, 500))
+        await resetPassword(resetPwdForm.userId)
         ElMessage.success('密码重置成功')
         resetPwdDialogVisible.value = false
       } catch (error) {
-        console.error(error)
+        console.error('重置密码失败:', error)
       } finally {
         resetPwdLoading.value = false
       }
@@ -506,12 +510,17 @@ const handleSubmit = async () => {
     if (valid) {
       submitLoading.value = true
       try {
-        await new Promise(resolve => setTimeout(resolve, 500))
-        ElMessage.success(formData.id ? '更新成功' : '创建成功')
+        if (formData.id) {
+          await updateUser(formData.id, formData)
+          ElMessage.success('更新成功')
+        } else {
+          await createUser(formData)
+          ElMessage.success('创建成功')
+        }
         dialogVisible.value = false
         loadUsers()
       } catch (error) {
-        console.error(error)
+        console.error('提交失败:', error)
       } finally {
         submitLoading.value = false
       }

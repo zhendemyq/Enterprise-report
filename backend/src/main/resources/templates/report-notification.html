@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: #4a90d9; color: white; padding: 20px; text-align: center; }
+        .content { padding: 20px; background-color: #f9f9f9; }
+        .info-table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+        .info-table td { padding: 10px; border-bottom: 1px solid #ddd; }
+        .info-table td:first-child { font-weight: bold; width: 120px; }
+        .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>报表生成通知</h2>
+        </div>
+        <div class="content">
+            <p>您好，</p>
+            <p>您的报表已生成完成，详细信息如下：</p>
+            <table class="info-table">
+                <tr>
+                    <td>报表名称</td>
+                    <td th:text="${reportName}"></td>
+                </tr>
+                <tr>
+                    <td>生成时间</td>
+                    <td th:text="${generateTime}"></td>
+                </tr>
+                <tr>
+                    <td>数据行数</td>
+                    <td th:text="${dataRows}"></td>
+                </tr>
+            </table>
+            <p>请查看附件获取完整报表。</p>
+        </div>
+        <div class="footer">
+            <p>此邮件由企业报表系统自动发送，请勿直接回复。</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -171,7 +171,7 @@
           :data="permissionTree"
           show-checkbox
           node-key="id"
-          :props="{ label: 'name', children: 'children' }"
+          :props="{ label: 'label', children: 'children' }"
           :default-checked-keys="checkedPermissions"
         />
       </div>
@@ -190,6 +190,16 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { User, More, Edit, Key, Delete, Plus } from '@element-plus/icons-vue'
+import { 
+  listRoles, 
+  createRole, 
+  updateRole, 
+  deleteRole, 
+  toggleRoleStatus,
+  getRolePermissions,
+  saveRolePermissions,
+  getPermissionTree 
+} from '@/api/role'
 
 // 颜色选项
 const colorOptions = [
@@ -242,53 +252,24 @@ onMounted(() => {
 
 // 加载角色列表
 const loadRoles = async () => {
-  roleList.value = [
-    { id: 1, roleName: '超级管理员', roleCode: 'ROLE_ADMIN', color: '#007AFF', status: 1, userCount: 1, isSystem: true, description: '系统内置管理员角色，拥有所有权限' },
-    { id: 2, roleName: '普通用户', roleCode: 'ROLE_USER', color: '#34C759', status: 1, userCount: 15, isSystem: false, description: '普通用户，拥有基础查看和操作权限' },
-    { id: 3, roleName: '报表管理员', roleCode: 'ROLE_REPORT', color: '#FF9500', status: 1, userCount: 5, isSystem: false, description: '负责报表模板设计和管理' },
-    { id: 4, roleName: '访客', roleCode: 'ROLE_GUEST', color: '#8E8E93', status: 0, userCount: 0, isSystem: false, description: '仅有查看权限' }
-  ]
+  try {
+    const res = await listRoles()
+    roleList.value = res.data || []
+  } catch (error) {
+    console.error('加载角色列表失败:', error)
+    roleList.value = []
+  }
 }
 
 // 加载权限树
-const loadPermissionTree = () => {
-  permissionTree.value = [
-    {
-      id: 1,
-      name: '报表管理',
-      children: [
-        { id: 11, name: '模板管理' },
-        { id: 12, name: '模板设计' },
-        { id: 13, name: '报表生成' },
-        { id: 14, name: '生成记录' },
-        { id: 15, name: '分类管理' }
-      ]
-    },
-    {
-      id: 2,
-      name: '数据源管理',
-      children: [
-        { id: 21, name: '数据源列表' },
-        { id: 22, name: '数据源配置' }
-      ]
-    },
-    {
-      id: 3,
-      name: '定时任务',
-      children: [
-        { id: 31, name: '任务管理' },
-        { id: 32, name: '执行日志' }
-      ]
-    },
-    {
-      id: 4,
-      name: '系统管理',
-      children: [
-        { id: 41, name: '用户管理' },
-        { id: 42, name: '角色管理' }
-      ]
-    }
-  ]
+const loadPermissionTree = async () => {
+  try {
+    const res = await getPermissionTree()
+    permissionTree.value = res.data || []
+  } catch (error) {
+    console.error('加载权限树失败:', error)
+    permissionTree.value = []
+  }
 }
 
 // 新建
@@ -316,43 +297,53 @@ const handleDelete = async (role) => {
       '警告',
       { type: 'error', confirmButtonText: '删除' }
     )
-    roleList.value = roleList.value.filter(r => r.id !== role.id)
+    await deleteRole(role.id)
     ElMessage.success('删除成功')
+    loadRoles()
   } catch (error) {
-    // 取消
+    if (error !== 'cancel') {
+      console.error('删除失败:', error)
+    }
   }
 }
 
 // 权限配置
-const handlePermission = (role) => {
+const handlePermission = async (role) => {
   currentRole.value = role
-  // 模拟已有权限
-  checkedPermissions.value = role.id === 1 
-    ? [11, 12, 13, 14, 15, 21, 22, 31, 32, 41, 42]
-    : role.id === 2
-    ? [11, 13, 14]
-    : [11, 12, 13, 14, 15, 21, 22]
+  try {
+    const res = await getRolePermissions(role.id)
+    checkedPermissions.value = res.data || []
+  } catch (error) {
+    console.error('加载角色权限失败:', error)
+    checkedPermissions.value = []
+  }
   permDialogVisible.value = true
 }
 
 const handlePermSubmit = async () => {
   permLoading.value = true
   try {
-    await new Promise(resolve => setTimeout(resolve, 500))
-    const checkedKeys = permTreeRef.value?.getCheckedKeys()
-    console.log('保存权限:', checkedKeys)
+    const checkedKeys = permTreeRef.value?.getCheckedKeys() || []
+    await saveRolePermissions(currentRole.value.id, checkedKeys)
     ElMessage.success('权限配置已保存')
     permDialogVisible.value = false
   } catch (error) {
-    console.error(error)
+    console.error('保存权限失败:', error)
   } finally {
     permLoading.value = false
   }
 }
 
 // 状态变更
-const handleStatusChange = (role) => {
-  ElMessage.success(`角色「${role.roleName}」已${role.status ? '启用' : '禁用'}`)
+const handleStatusChange = async (role) => {
+  try {
+    await toggleRoleStatus(role.id, role.status)
+    ElMessage.success(`角色「${role.roleName}」已${role.status ? '启用' : '禁用'}`)
+  } catch (error) {
+    console.error('状态变更失败:', error)
+    // 回滚状态
+    role.status = role.status ? 0 : 1
+  }
 }
 
 // 提交
@@ -363,24 +354,17 @@ const handleSubmit = async () => {
     if (valid) {
       submitLoading.value = true
       try {
-        await new Promise(resolve => setTimeout(resolve, 500))
         if (formData.id) {
-          const idx = roleList.value.findIndex(r => r.id === formData.id)
-          if (idx > -1) {
-            roleList.value[idx] = { ...roleList.value[idx], ...formData }
-          }
+          await updateRole(formData.id, formData)
+          ElMessage.success('更新成功')
         } else {
-          roleList.value.push({
-            ...formData,
-            id: Date.now(),
-            userCount: 0,
-            isSystem: false
-          })
+          await createRole(formData)
+          ElMessage.success('创建成功')
         }
-        ElMessage.success(formData.id ? '更新成功' : '创建成功')
         dialogVisible.value = false
+        loadRoles()
       } catch (error) {
-        console.error(error)
+        console.error('提交失败:', error)
       } finally {
         submitLoading.value = false
       }

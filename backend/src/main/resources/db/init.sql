@@ -212,30 +212,24 @@ CREATE TABLE IF NOT EXISTS report_permission (
     UNIQUE KEY uk_template_role_permission (template_id, role_id, permission_type)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='报表权限表';
 
--- ===========================
--- 初始化数据
--- ===========================
-
--- 初始化管理员用户 (密码: 123456)
-INSERT INTO sys_user (username, password, nickname, email, status) VALUES 
-('admin', 'e10adc3949ba59abbe56e057f20f883e', '系统管理员', 'admin@example.com', 1);
-
--- 初始化角色
-INSERT INTO sys_role (role_code, role_name, description, sort) VALUES 
-('admin', '系统管理员', '拥有系统所有权限', 1),
-('designer', '报表设计师', '可以设计和编辑报表模板', 2),
-('user', '业务用户', '可以查看和生成报表', 3);
-
--- 管理员角色关联
-INSERT INTO sys_user_role (user_id, role_id) VALUES (1, 1);
-
--- 初始化报表分类
-INSERT INTO report_category (category_name, category_code, parent_id, description, sort, icon) VALUES 
-('财务报表', 'finance', 0, '财务相关报表', 1, 'Money'),
-('销售报表', 'sales', 0, '销售相关报表', 2, 'TrendCharts'),
-('运营报表', 'operation', 0, '运营相关报表', 3, 'DataAnalysis'),
-('人事报表', 'hr', 0, '人事相关报表', 4, 'User');
-
--- 初始化示例数据源（本地数据库）
-INSERT INTO report_datasource (datasource_name, datasource_code, datasource_type, host, port, database_name, username, password, description, status) VALUES 
-('本地MySQL', 'local_mysql', 1, 'localhost', 3306, 'enterprise_report', 'root', 'root', '本地开发数据库', 1);
+-- 定时任务执行日志表
+CREATE TABLE IF NOT EXISTS report_schedule_log (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
+    schedule_id BIGINT NOT NULL COMMENT '任务ID',
+    task_name VARCHAR(100) COMMENT '任务名称',
+    execute_params JSON COMMENT '执行参数',
+    status TINYINT DEFAULT 0 COMMENT '执行状态 0-执行中 1-成功 2-失败',
+    error_msg VARCHAR(1000) COMMENT '错误信息',
+    report_record_id BIGINT COMMENT '生成的报表ID',
+    start_time DATETIME COMMENT '开始时间',
+    end_time DATETIME COMMENT '结束时间',
+    duration BIGINT COMMENT '耗时（毫秒）',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    create_by BIGINT COMMENT '创建人ID',
+    update_by BIGINT COMMENT '更新人ID',
+    deleted TINYINT DEFAULT 0 COMMENT '逻辑删除标记',
+    INDEX idx_schedule_id (schedule_id),
+    INDEX idx_status (status),
+    INDEX idx_create_time (create_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='定时任务执行日志表';

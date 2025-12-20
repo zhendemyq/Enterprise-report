@@ -244,19 +244,12 @@ onMounted(() => {
 const loadDatasources = async () => {
   try {
     const res = await listDatasources()
-    datasourceList.value = res.data || mockDatasources()
+    datasourceList.value = res.data || []
   } catch (error) {
-    datasourceList.value = mockDatasources()
+    console.error('加载数据源失败:', error)
+    datasourceList.value = []
   }
 }
-
-// 模拟数据
-const mockDatasources = () => [
-  { id: 1, datasourceName: '本地MySQL', datasourceCode: 'local_mysql', datasourceType: 1, host: 'localhost', port: 3306, databaseName: 'enterprise_report', username: 'root', testResult: 1, description: '本地开发数据库' },
-  { id: 2, datasourceName: '生产环境MySQL', datasourceCode: 'prod_mysql', datasourceType: 1, host: '192.168.1.100', port: 3306, databaseName: 'erp_prod', username: 'admin', testResult: 1, description: '生产环境数据库' },
-  { id: 3, datasourceName: 'PostgreSQL测试', datasourceCode: 'test_pg', datasourceType: 2, host: 'localhost', port: 5432, databaseName: 'test_db', username: 'postgres', testResult: 0, description: 'PostgreSQL测试环境' },
-  { id: 4, datasourceName: '外部API', datasourceCode: 'external_api', datasourceType: 5, apiUrl: 'https://api.example.com/data', testResult: null, description: '第三方数据接口' }
-]
 
 // 新建
 const handleCreate = () => {
@@ -289,11 +282,14 @@ const handleTest = async (ds) => {
 const handleTestInDialog = async () => {
   testLoading.value = true
   try {
-    // 模拟测试
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    ElMessage.success('连接成功')
+    if (!formData.id) {
+      ElMessage.warning('?????????????')
+      return
+    }
+    await testConnection(formData.id)
+    ElMessage.success('????')
   } catch (error) {
-    ElMessage.error('连接失败')
+    ElMessage.error('????')
   } finally {
     testLoading.value = false
   }

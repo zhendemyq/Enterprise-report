@@ -122,11 +122,21 @@ public class ReportDatasourceServiceImpl extends ServiceImpl<ReportDatasourceMap
             HikariDataSource ds = getOrCreateDataSource(datasource);
             JdbcTemplate jdbcTemplate = new JdbcTemplate(ds);
 
+            // 检查SQL中的参数占位符,确保所有必需的参数都已提供
+            validateSqlParams(sql, params);
+            
             // 处理参数替换
             String execSql = replaceSqlParams(sql, params);
             logger.debug("执行SQL: {}", execSql);
 
             return jdbcTemplate.queryForList(execSql);
+        } catch (com.zaxxer.hikari.pool.HikariPool.PoolInitializationException e) {
+            logger.error("数据源连接失败: {}:{}", datasource.getHost(), datasource.getPort(), e);
+            throw new BusinessException(String.format(
+                "数据源[%s]连接失败,无法连接到 %s:%d,请检查网络连接或数据源配置", 
+                datasource.getDatasourceName(), datasource.getHost(), datasource.getPort()));
+        } catch (BusinessException e) {
+            throw e;
         } catch (Exception e) {
             logger.error("SQL执行失败", e);
             throw new BusinessException("SQL执行失败: " + e.getMessage());
@@ -219,7 +229,37 @@ public class ReportDatasourceServiceImpl extends ServiceImpl<ReportDatasourceMap
     }
 
     /**
+     * 验证SQL参数
+     */
+    private void validateSqlParams(String sql, Map<String, Object> params) {
+        if (sql == null) {
+            return;
+        }
+        
+        // 查找所有 :paramName 格式的参数
+        java.util.regex.Pattern colonPattern = java.util.regex.Pattern.compile(":(\\w+)");
+        java.util.regex.Matcher colonMatcher = colonPattern.matcher(sql);
+        while (colonMatcher.find()) {
+            String paramName = colonMatcher.group(1);
+            if (params == null || !params.containsKey(paramName)) {
+                throw new BusinessException("缺少必需的SQL参数: " + paramName);
+            }
+        }
+        
+        // 查找所有 ${paramName} 格式的参数
+        java.util.regex.Pattern dollarPattern = java.util.regex.Pattern.compile("\\$\\{(\\w+)\\}");
+        java.util.regex.Matcher dollarMatcher = dollarPattern.matcher(sql);
+        while (dollarMatcher.find()) {
+            String paramName = dollarMatcher.group(1);
+            if (params == null || !params.containsKey(paramName)) {
+                throw new BusinessException("缺少必需的SQL参数: " + paramName);
+            }
+        }
+    }
+
+    /**
      * 替换SQL参数
+     * 支持两种格式: ${paramName} 和 :paramName
      */
     private String replaceSqlParams(String sql, Map<String, Object> params) {
         if (params == null || params.isEmpty()) {
@@ -228,11 +268,27 @@ public class ReportDatasourceServiceImpl extends ServiceImpl<ReportDatasourceMap
 
         String result = sql;
         for (Map.Entry<String, Object> entry : params.entrySet()) {
-            String placeholder = "${" + entry.getKey() + "}";
+            String key = entry.getKey();
             Object value = entry.getValue();
-            String replacement = value == null ? "NULL" : 
-                    (value instanceof Number ? value.toString() : "'" + value.toString() + "'");
-            result = result.replace(placeholder, replacement);
+            
+            // 根据值类型生成替换字符串
+            String replacement;
+            if (value == null) {
+                replacement = "NULL";
+            } else if (value instanceof Number) {
+                replacement = value.toString();
+            } else {
+                // 字符串类型需要加单引号,并转义单引号
+                replacement = "'" + value.toString().replace("'", "''") + "'";
+            }
+            
+            // 替换 ${paramName} 格式
+            String dollarPlaceholder = "${" + key + "}";
+            result = result.replace(dollarPlaceholder, replacement);
+            
+            // 替换 :paramName 格式
+            String colonPlaceholder = ":" + key;
+            result = result.replace(colonPlaceholder, replacement);
         }
         return result;
     }

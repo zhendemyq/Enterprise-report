@@ -258,17 +258,31 @@
           <el-icon class="loading-icon"><Loading /></el-icon>
           <p>正在加载预览...</p>
         </div>
-        <div v-else class="preview-frame">
-          <!-- PDF预览或表格预览 -->
-          <div class="preview-placeholder">
-            <el-icon :size="64"><Document /></el-icon>
-            <h3>报表预览</h3>
-            <p>此处显示报表预览内容</p>
-          </div>
+        <!-- PDF预览 -->
+        <div v-else-if="previewType === 'pdf'" class="preview-frame">
+          <iframe v-if="previewUrl" :src="previewUrl" width="100%" height="100%" frameborder="0"></iframe>
+        </div>
+        <!-- Excel/CSV表格预览 -->
+        <div v-else-if="previewData.length > 0" class="preview-table-wrapper">
+          <el-table :data="previewData" border stripe max-height="65vh">
+            <el-table-column
+              v-for="(header, index) in previewHeaders"
+              :key="index"
+              :prop="String(index)"
+              :label="header"
+              min-width="120"
+            >
+              <template #default="{ row }">{{ row[index] }}</template>
+            </el-table-column>
+          </el-table>
+        </div>
+        <div v-else class="preview-placeholder">
+          <el-icon :size="64"><Document /></el-icon>
+          <h3>暂无数据</h3>
         </div>
       </div>
       <template #footer>
-        <el-button @click="previewDialogVisible = false">关闭</el-button>
+        <el-button @click="closePreview">关闭</el-button>
         <el-button type="primary" @click="handleDownloadFromPreview">
           <el-icon><Download /></el-icon>
           下载
@@ -312,6 +326,7 @@ import { ElMessage } from 'element-plus'
 import { listUserTemplates } from '@/api/template'
 import { generateReport, downloadReport, previewReport } from '@/api/report'
 import dayjs from 'dayjs'
+import * as XLSX from 'xlsx'
 
 // 搜索关键词
 const searchKeyword = ref('')
@@ -347,6 +362,10 @@ const formatOptions = [
 const generating = ref(false)
 const previewDialogVisible = ref(false)
 const previewLoading = ref(false)
+const previewUrl = ref('')
+const previewData = ref([])  // Excel/CSV 表格数据
+const previewHeaders = ref([])  // 表头
+const previewType = ref('pdf')  // 预览类型
 const successDialogVisible = ref(false)
 const generatedReport = ref(null)
 
@@ -380,111 +399,10 @@ const loadTemplates = async () => {
     const res = await listUserTemplates()
     templateList.value = res.data || []
   } catch (error) {
-    // 使用模拟数据
-    templateList.value = mockTemplates()
+    console.error('加载模板列表失败:', error)
+    templateList.value = []
   }
 }
-
-// 模拟数据
-const mockTemplates = () => [
-  { 
-    id: 1, 
-    templateName: '销售日报模板', 
-    templateCode: 'sales_daily',
-    templateType: 1, 
-    categoryCode: 'sales',
-    categoryName: '销售报表', 
-    description: '每日销售数据统计报表，包含销售额、订单数、客单价等',
-    useCount: 1256,
-    params: [
-      { name: 'dateRange', label: '日期范围', type: 'daterange', required: true },
-      { name: 'region', label: '区域', type: 'select', options: [
-        { label: '全部', value: '' },
-        { label: '华东', value: 'east' },
-        { label: '华南', value: 'south' },
-        { label: '华北', value: 'north' }
-      ]},
-      { name: 'productType', label: '产品类型', type: 'multiselect', options: [
-        { label: '类型A', value: 'A' },
-        { label: '类型B', value: 'B' },
-        { label: '类型C', value: 'C' }
-      ]}
-    ]
-  },
-  { 
-    id: 2, 
-    templateName: '财务月报模板', 
-    templateCode: 'finance_monthly',
-    templateType: 2, 
-    categoryCode: 'finance',
-    categoryName: '财务报表', 
-    description: '月度财务汇总报表，包含收入、支出、利润等财务指标',
-    useCount: 986,
-    params: [
-      { name: 'month', label: '月份', type: 'date', required: true },
-      { name: 'department', label: '部门', type: 'select', options: [
-        { label: '全公司', value: '' },
-        { label: '销售部', value: 'sales' },
-        { label: '研发部', value: 'rd' },
-        { label: '运营部', value: 'ops' }
-      ]}
-    ]
-  },
-  { 
-    id: 3, 
-    templateName: '员工考勤统计', 
-    templateCode: 'attendance_stats',
-    templateType: 3, 
-    categoryCode: 'hr',
-    categoryName: '人事报表', 
-    description: '员工考勤分组统计表，按部门汇总出勤情况',
-    useCount: 754,
-    params: [
-      { name: 'dateRange', label: '统计周期', type: 'daterange', required: true },
-      { name: 'department', label: '部门', type: 'select', options: [
-        { label: '全部', value: '' },
-        { label: '技术部', value: 'tech' },
-        { label: '产品部', value: 'product' },
-        { label: '市场部', value: 'market' }
-      ]}
-    ]
-  },
-  { 
-    id: 4, 
-    templateName: '订单明细报表', 
-    templateCode: 'order_detail',
-    templateType: 1, 
-    categoryCode: 'operation',
-    categoryName: '运营报表', 
-    description: '订单详情明细表，展示订单完整信息',
-    useCount: 621,
-    params: [
-      { name: 'dateRange', label: '订单日期', type: 'daterange', required: true },
-      { name: 'status', label: '订单状态', type: 'select', options: [
-        { label: '全部', value: '' },
-        { label: '待支付', value: 'pending' },
-        { label: '已支付', value: 'paid' },
-        { label: '已发货', value: 'shipped' },
-        { label: '已完成', value: 'completed' }
-      ]},
-      { name: 'minAmount', label: '最低金额', type: 'number' }
-    ]
-  },
-  { 
-    id: 5, 
-    templateName: '销售趋势分析', 
-    templateCode: 'sales_trend',
-    templateType: 4, 
-    categoryCode: 'sales',
-    categoryName: '销售报表', 
-    description: '销售数据图表分析，包含趋势图和对比图',
-    useCount: 489,
-    params: [
-      { name: 'year', label: '年份', type: 'date', required: true },
-      { name: 'compareYear', label: '对比年份', type: 'date' }
-    ]
-  }
-]
 
 // 选择模板
 const selectTemplate = (template) => {
@@ -515,16 +433,56 @@ const resetParams = () => {
 // 预览
 const handlePreview = async () => {
   if (!paramsFormRef.value) return
-  
+
   await paramsFormRef.value.validate(async (valid) => {
     if (valid) {
       previewDialogVisible.value = true
       previewLoading.value = true
-      
-      // 模拟加载
-      setTimeout(() => {
+      previewUrl.value = ''
+      previewData.value = []
+      previewHeaders.value = []
+      previewType.value = selectedFormat.value
+
+      try {
+        const data = {
+          templateId: selectedTemplate.value.id,
+          reportName: reportName.value || selectedTemplate.value.templateName,
+          fileType: selectedFormat.value,
+          params: generateParams
+        }
+        const res = await generateReport(data)
+        if (res.data?.id) {
+          generatedReport.value = res.data
+          const previewRes = await previewReport(res.data.id)
+
+          if (selectedFormat.value === 'pdf') {
+            const blob = new Blob([previewRes.data], { type: 'application/pdf' })
+            previewUrl.value = URL.createObjectURL(blob)
+          } else if (selectedFormat.value === 'xlsx') {
+            const arrayBuffer = await previewRes.data.arrayBuffer()
+            const workbook = XLSX.read(arrayBuffer, { type: 'array' })
+            const sheetName = workbook.SheetNames[0]
+            const worksheet = workbook.Sheets[sheetName]
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 })
+            if (jsonData.length > 0) {
+              previewHeaders.value = jsonData[0]
+              previewData.value = jsonData.slice(1)
+            }
+          } else if (selectedFormat.value === 'csv') {
+            const text = await previewRes.data.text()
+            const lines = text.split('\n').filter(line => line.trim())
+            if (lines.length > 0) {
+              previewHeaders.value = lines[0].split(',').map(h => h.trim())
+              previewData.value = lines.slice(1).map(line => line.split(',').map(c => c.trim()))
+            }
+          }
+        }
+      } catch (error) {
+        console.error('预览失败:', error)
+        ElMessage.error('预览失败，请重试')
+      } finally {
         previewLoading.value = false
-      }, 1500)
+      }
     }
   })
 }
@@ -547,24 +505,18 @@ const handleGenerate = async () => {
         
         const res = await generateReport(data)
         
-        // 模拟生成结果
-        generatedReport.value = {
-          id: res.data?.id || Date.now(),
-          reportName: data.reportName,
-          fileSize: 1024 * 256, // 256KB
-          duration: 1200
+        if (res.data) {
+          generatedReport.value = {
+            id: res.data.id,
+            reportName: res.data.reportName || data.reportName,
+            fileSize: res.data.fileSize || 0,
+            duration: res.data.duration || 0
+          }
+          successDialogVisible.value = true
         }
-        
-        successDialogVisible.value = true
       } catch (error) {
-        // 模拟成功
-        generatedReport.value = {
-          id: Date.now(),
-          reportName: reportName.value || selectedTemplate.value.templateName,
-          fileSize: 1024 * 256,
-          duration: 1200
-        }
-        successDialogVisible.value = true
+        console.error('生成报表失败:', error)
+        ElMessage.error('报表生成失败，请重试')
       } finally {
         generating.value = false
       }
@@ -598,7 +550,16 @@ const handleDownload = async () => {
 // 从预览下载
 const handleDownloadFromPreview = () => {
   previewDialogVisible.value = false
-  handleGenerate()
+  handleDownload()
+}
+
+// 关闭预览
+const closePreview = () => {
+  if (previewUrl.value) {
+    URL.revokeObjectURL(previewUrl.value)
+    previewUrl.value = ''
+  }
+  previewDialogVisible.value = false
 }
 
 // 工具函数
@@ -1047,6 +1008,12 @@ const formatFileSize = (bytes) => {
 
 .preview-frame {
   height: 100%;
+}
+
+.preview-table-wrapper {
+  height: 100%;
+  padding: 16px;
+  overflow: auto;
 }
 
 .preview-placeholder {

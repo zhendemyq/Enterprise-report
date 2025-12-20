@@ -308,6 +308,16 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import dayjs from 'dayjs'
+import { 
+  pageSchedules, 
+  createSchedule, 
+  updateSchedule, 
+  deleteSchedule, 
+  toggleScheduleStatus, 
+  executeSchedule,
+  getScheduleLogs 
+} from '@/api/schedule'
+import { listUserTemplates } from '@/api/template'
 
 // 查询参数
 const queryParams = reactive({
@@ -370,16 +380,13 @@ onMounted(() => {
 const loadSchedules = async () => {
   loading.value = true
   try {
-    // 模拟数据
-    scheduleList.value = [
-      { id: 1, taskName: '销售日报自动生成', templateId: 1, templateName: '销售日报模板', scheduleType: 1, cronExpression: '0 0 8 * * ?', fileType: 'xlsx', sendEmail: true, status: 1, lastExecuteTime: '2024-10-28 08:00:00', nextExecuteTime: '2024-10-29 08:00:00', executeCount: 156, failCount: 2 },
-      { id: 2, taskName: '财务月报生成', templateId: 2, templateName: '财务月报模板', scheduleType: 3, cronExpression: '0 0 9 1 * ?', fileType: 'pdf', sendEmail: true, status: 1, lastExecuteTime: '2024-10-01 09:00:00', nextExecuteTime: '2024-11-01 09:00:00', executeCount: 12, failCount: 0 },
-      { id: 3, taskName: '周销售汇总', templateId: 3, templateName: '销售周报模板', scheduleType: 2, cronExpression: '0 0 10 ? * MON', fileType: 'xlsx', sendEmail: false, status: 1, lastExecuteTime: '2024-10-28 10:00:00', nextExecuteTime: '2024-11-04 10:00:00', executeCount: 45, failCount: 1 },
-      { id: 4, taskName: '考勤统计报表', templateId: 4, templateName: '考勤统计模板', scheduleType: 3, cronExpression: '0 0 6 1 * ?', fileType: 'xlsx', sendEmail: true, status: 0, lastExecuteTime: '2024-10-01 06:00:00', nextExecuteTime: null, executeCount: 8, failCount: 0 }
-    ]
-    total.value = scheduleList.value.length
+    const res = await pageSchedules(queryParams)
+    scheduleList.value = res.data?.records || []
+    total.value = res.data?.total || 0
   } catch (error) {
-    console.error(error)
+    console.error('加载任务列表失败:', error)
+    scheduleList.value = []
+    total.value = 0
   } finally {
     loading.value = false
   }
@@ -387,12 +394,13 @@ const loadSchedules = async () => {
 
 // 加载模板列表
 const loadTemplates = async () => {
-  templateList.value = [
-    { id: 1, templateName: '销售日报模板' },
-    { id: 2, templateName: '财务月报模板' },
-    { id: 3, templateName: '销售周报模板' },
-    { id: 4, templateName: '考勤统计模板' }
-  ]
+  try {
+    const res = await listUserTemplates()
+    templateList.value = res.data || []
+  } catch (error) {
+    console.error('加载模板列表失败:', error)
+    templateList.value = []
+  }
 }
 
 // 搜索
@@ -429,21 +437,27 @@ const handleExecute = async (row) => {
       '提示',
       { type: 'warning' }
     )
+    await executeSchedule(row.id)
     ElMessage.success('任务已提交执行')
+    loadSchedules()
   } catch (error) {
-    // 取消
+    if (error !== 'cancel') {
+      console.error('执行任务失败:', error)
+    }
   }
 }
 
 // 查看日志
-const handleViewLog = (row) => {
-  logList.value = [
-    { executeTime: '2024-10-28 08:00:02', success: true, duration: 1250, message: '报表生成成功，已发送邮件' },
-    { executeTime: '2024-10-27 08:00:01', success: true, duration: 980, message: '报表生成成功，已发送邮件' },
-    { executeTime: '2024-10-26 08:00:05', success: false, duration: 5600, message: '数据查询超时' },
-    { executeTime: '2024-10-25 08:00:02', success: true, duration: 1100, message: '报表生成成功，已发送邮件' }
-  ]
-  logDialogVisible.value = true
+const handleViewLog = async (row) => {
+  try {
+    const res = await getScheduleLogs(row.id, { pageNum: 1, pageSize: 20 })
+    logList.value = res.data?.records || []
+    logDialogVisible.value = true
+  } catch (error) {
+    console.error('加载日志失败:', error)
+    logList.value = []
+    logDialogVisible.value = true
+  }
 }
 
 // 删除
@@ -454,16 +468,26 @@ const handleDelete = async (row) => {
       '警告',
       { type: 'error', confirmButtonText: '删除' }
     )
+    await deleteSchedule(row.id)
     ElMessage.success('删除成功')
     loadSchedules()
   } catch (error) {
-    // 取消
+    if (error !== 'cancel') {
+      console.error('删除失败:', error)
+    }
   }
 }
 
 // 状态变更
-const handleStatusChange = (row) => {
-  ElMessage.success(`任务「${row.taskName}」已${row.status ? '启用' : '禁用'}`)
+const handleStatusChange = async (row) => {
+  try {
+    await toggleScheduleStatus(row.id, row.status)
+    ElMessage.success(`任务「${row.taskName}」已${row.status ? '启用' : '禁用'}`)
+  } catch (error) {
+    console.error('状态变更失败:', error)
+    // 回滚状态
+    row.status = row.status ? 0 : 1
+  }
 }
 
 // 调度类型变更
@@ -490,12 +514,17 @@ const handleSubmit = async () => {
     if (valid) {
       submitLoading.value = true
       try {
-        await new Promise(resolve => setTimeout(resolve, 500))
-        ElMessage.success(formData.id ? '更新成功' : '创建成功')
+        if (formData.id) {
+          await updateSchedule(formData.id, formData)
+          ElMessage.success('更新成功')
+        } else {
+          await createSchedule(formData)
+          ElMessage.success('创建成功')
+        }
         dialogVisible.value = false
         loadSchedules()
       } catch (error) {
-        console.error(error)
+        console.error('提交失败:', error)
       } finally {
         submitLoading.value = false
       }

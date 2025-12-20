@@ -103,6 +103,34 @@ report:
     enabled: true
     ttl: 3600
 
+# 外部认证配置（SSO/LDAP）
+auth:
+  # SSO单点登录配置
+  sso:
+    enabled: false
+    # CAS配置
+    cas:
+      server-url: https://cas.example.com/cas
+      service-url: http://localhost:8080/api
+    # OAuth2配置
+    oauth2:
+      client-id: your-client-id
+      client-secret: your-client-secret
+      authorization-uri: https://oauth.example.com/authorize
+      token-uri: https://oauth.example.com/token
+      user-info-uri: https://oauth.example.com/userinfo
+  # LDAP/AD域认证配置
+  ldap:
+    enabled: false
+    url: ldap://ldap.example.com:389
+    base-dn: dc=example,dc=com
+    manager-dn: cn=admin,dc=example,dc=com
+    manager-password: admin-password
+    user-search-base: ou=users
+    user-search-filter: (uid={0})
+    group-search-base: ou=groups
+    group-search-filter: (member={0})
+
 # Knife4j API文档配置
 springdoc:
   swagger-ui:
