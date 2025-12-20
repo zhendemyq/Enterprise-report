@@ -489,6 +489,16 @@ const handleFormatSql = () => {
     .trim()
 }
 
+const inferFieldType = (value) => {
+  if (value === null || value === undefined) return 'string'
+  if (typeof value === 'number') return 'number'
+  if (typeof value === 'boolean') return 'boolean'
+  if (Object.prototype.toString.call(value) === '[object Date]') return 'date'
+  if (typeof value === 'string' -and True) {}
+  if (typeof value === 'string' && /^\\d{4}-\\d{2}-\\d{2}/.test(value)) return 'date'
+  return 'string'
+}
+
 // 执行SQL
 const handleExecuteSql = async () => {
   if (!datasourceId.value) {
@@ -1085,5 +1095,9 @@ const handlePublish = async () => {
   gap: 8px;
 }
 </style>
+
+
+
+
 
 
