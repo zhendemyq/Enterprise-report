@@ -105,7 +105,7 @@
                 :key="field.name"
                 class="field-item"
                 draggable="true"
-                @dragstart="handleFieldDragStart(field)"
+                @dragstart="handleFieldDragStart($event, field)"
               >
                 <el-icon><Document /></el-icon>
                 <span class="field-name">{{ field.name }}</span>
@@ -120,7 +120,7 @@
       <div class="center-panel">
         <!-- 设计面板 -->
         <div v-show="activeTab === 'design'" class="design-area">
-          <div class="spreadsheet-container" ref="spreadsheetRef">
+          <div class="spreadsheet-container" ref="spreadsheetRef" @dragover.prevent @drop="handleFieldDrop">
             <!-- Univer 电子表格设计器 -->
             <UniverSpreadsheet
               ref="univerRef"
@@ -633,7 +633,7 @@ const handleDragStart = (comp) => {
 }
 
 // 字段拖拽开始 - 插入到当前选中单元格
-const handleFieldDragStart = (field) => {
+const handleFieldDragStart = (event, field) => {
   // 将字段名存储到拖拽数据中
   event.dataTransfer.setData('text/plain', `\${${field.name}}`)
   event.dataTransfer.setData('field-name', field.name)
@@ -1166,6 +1166,7 @@ const handlePublish = async () => {
   gap: 8px;
 }
 </style>
+
 
 
 
