@@ -82,6 +82,24 @@
               请先选择数据源
             </div>
             <template v-else>
+              <el-select
+                v-model="tableName"
+                placeholder="选择表"
+                size="small"
+                class="table-select"
+                :loading="fieldLoading"
+                @change="handleTableChange"
+              >
+                <el-option
+                  v-for="table in tableList"
+                  :key="table"
+                  :label="table"
+                  :value="table"
+                />
+              </el-select>
+              <div v-if="tableList.length === 0" class="empty-tip">
+                暂无可用表
+              </div>
               <div 
                 v-for="field in fieldList" 
                 :key="field.name"
@@ -302,13 +320,13 @@
               <div class="style-toolbar">
                 <el-button-group>
                   <el-button size="small">
-                    <el-icon><TextBold /></el-icon>
+                    <el-icon><Operation /></el-icon>
                   </el-button>
                   <el-button size="small">
-                    <el-icon><TextItalic /></el-icon>
+                    <el-icon><EditPen /></el-icon>
                   </el-button>
                   <el-button size="small">
-                    <el-icon><TextUnderline /></el-icon>
+                    <el-icon><Minus /></el-icon>
                   </el-button>
                 </el-button-group>
               </div>
@@ -317,13 +335,13 @@
             <el-form-item label="对齐方式">
               <el-button-group>
                 <el-button size="small">
-                  <el-icon><AlignLeft /></el-icon>
+                  <el-icon><Back /></el-icon>
                 </el-button>
                 <el-button size="small">
-                  <el-icon><AlignCenter /></el-icon>
+                  <el-icon><Position /></el-icon>
                 </el-button>
                 <el-button size="small">
-                  <el-icon><AlignRight /></el-icon>
+                  <el-icon><Right /></el-icon>
                 </el-button>
               </el-button-group>
             </el-form-item>
@@ -374,7 +392,7 @@ import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getTemplateDetail, createTemplate, updateTemplate, publishTemplate } from '@/api/template'
-import { listDatasources, executeQuery } from '@/api/datasource'
+import { listDatasources, executeQuery, getTables, getTableColumns } from '@/api/datasource'
 import { generateReport, previewReport, downloadReport } from '@/api/report'
 import UniverSpreadsheet from '@/components/UniverSpreadsheet.vue'
 import * as XLSX from 'xlsx'
@@ -415,6 +433,9 @@ const querySql = ref('')
 const queryResult = ref([])
 const queryColumns = ref([])
 const fieldList = ref([])
+const tableList = ref([])
+const tableName = ref('')
+const fieldLoading = ref(false)
 
 // 参数配置
 const paramList = ref([])
@@ -459,6 +480,9 @@ const loadTemplateDetail = async () => {
       if (res.data.paramConfig) {
         paramList.value = JSON.parse(res.data.paramConfig)
       }
+      if (datasourceId.value) {
+        await handleDatasourceChange()
+      }
     }
   } catch (error) {
     console.error(error)
@@ -469,10 +493,55 @@ const loadTemplateDetail = async () => {
 const handleDatasourceChange = async () => {
   if (!datasourceId.value) {
     fieldList.value = []
+    tableList.value = []
+    tableName.value = ''
     return
   }
 
-  fieldList.value = []
+  fieldLoading.value = true
+  try {
+    const res = await getTables(datasourceId.value)
+    tableList.value = res.data || []
+    tableName.value = tableList.value[0] || ''
+    if (tableName.value) {
+      await loadTableColumns(tableName.value)
+    } else {
+      fieldList.value = []
+    }
+  } catch (error) {
+    tableList.value = []
+    tableName.value = ''
+    fieldList.value = []
+    ElMessage.error('字段加载失败')
+  } finally {
+    fieldLoading.value = false
+  }
+}
+
+const handleTableChange = async (value) => {
+  if (!value) {
+    fieldList.value = []
+    return
+  }
+  fieldLoading.value = true
+  try {
+    await loadTableColumns(value)
+  } catch (error) {
+    fieldList.value = []
+    ElMessage.error('字段加载失败')
+  } finally {
+    fieldLoading.value = false
+  }
+}
+
+const loadTableColumns = async (table) => {
+  const res = await getTableColumns(datasourceId.value, table)
+  const columns = res.data || []
+  fieldList.value = columns.map((col) => ({
+    name: col.column_name || col.columnName,
+    type: col.data_type || col.dataType || '',
+    label: col.column_comment || col.columnComment || ''
+  }))
 }
 
 // 格式化SQL
@@ -494,7 +563,6 @@ const inferFieldType = (value) => {
   if (typeof value === 'number') return 'number'
   if (typeof value === 'boolean') return 'boolean'
   if (Object.prototype.toString.call(value) === '[object Date]') return 'date'
-  if (typeof value === 'string' -and True) {}
   if (typeof value === 'string' && /^\\d{4}-\\d{2}-\\d{2}/.test(value)) return 'date'
   return 'string'
 }
@@ -802,6 +870,10 @@ const handlePublish = async () => {
   gap: 4px;
 }
 
+.table-select {
+  margin-bottom: 8px;
+}
+
 .field-item {
   display: flex;
   align-items: center;
@@ -1095,6 +1167,13 @@ const handlePublish = async () => {
   gap: 8px;
 }
 </style>
+
+
+
+
+
+
+
 
 
 
