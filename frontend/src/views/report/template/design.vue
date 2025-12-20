@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="design-container">
     <!-- 顶部工具栏 -->
     <div class="design-header">
@@ -370,18 +370,20 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getTemplateDetail, saveTemplateDesign, publishTemplate } from '@/api/template'
+import { getTemplateDetail, createTemplate, updateTemplate, publishTemplate } from '@/api/template'
 import { listDatasources, executeQuery } from '@/api/datasource'
+import { generateReport, previewReport, downloadReport } from '@/api/report'
 import UniverSpreadsheet from '@/components/UniverSpreadsheet.vue'
+import * as XLSX from 'xlsx'
 
 const route = useRoute()
 const router = useRouter()
 
 // 模板ID
-const templateId = computed(() => route.params.id)
+const templateId = ref(route.params.id || null)
 
 // 基本信息
 const templateName = ref('未命名报表模板')
@@ -1083,3 +1085,5 @@ const handlePublish = async () => {
   gap: 8px;
 }
 </style>
+
+
