@@ -269,7 +269,7 @@
               v-for="(header, index) in previewHeaders"
               :key="index"
               :prop="String(index)"
-              :label="header"
+              :label="String(header ?? '')"
               min-width="120"
             >
               <template #default="{ row }">{{ row[index] }}</template>
@@ -482,20 +482,48 @@ const handlePreview = async () => {
             const blob = new Blob([previewRes.data], { type: 'application/pdf' })
             previewUrl.value = URL.createObjectURL(blob)
           } else if (selectedFormat.value === 'xlsx') {
-            const arrayBuffer = await previewRes.data.arrayBuffer()
-            const workbook = XLSX.read(arrayBuffer, { type: 'array' })
-            const sheetName = workbook.SheetNames[0]
-            const worksheet = workbook.Sheets[sheetName]
-            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 })
-            if (jsonData.length > 0) {
-              previewHeaders.value = jsonData[0]
-              previewData.value = jsonData.slice(1)
+            try {
+              // 确保数据是ArrayBuffer格式
+              let arrayBuffer
+              if (previewRes.data instanceof ArrayBuffer) {
+                arrayBuffer = previewRes.data
+              } else if (previewRes.data instanceof Blob) {
+                arrayBuffer = await previewRes.data.arrayBuffer()
+              } else if (typeof previewRes.data.arrayBuffer === 'function') {
+                arrayBuffer = await previewRes.data.arrayBuffer()
+              } else {
+                // 如果是其他格式，尝试转换
+                const blob = new Blob([previewRes.data])
+                arrayBuffer = await blob.arrayBuffer()
+              }
+
+              const workbook = XLSX.read(new Uint8Array(arrayBuffer), { type: 'array' })
+              const sheetName = workbook.SheetNames[0]
+              const worksheet = workbook.Sheets[sheetName]
+              const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 })
+              if (jsonData.length > 0) {
+                previewHeaders.value = jsonData[0].map(h => String(h ?? ''))
+                previewData.value = jsonData.slice(1)
+              }
+            } catch (xlsxError) {
+              console.error('Excel解析错误:', xlsxError)
+              ElMessage.warning('Excel文件解析失败，请尝试下载后查看')
             }
           } else if (selectedFormat.value === 'csv') {
-            const text = await previewRes.data.text()
+            let text
+            if (typeof previewRes.data === 'string') {
+              text = previewRes.data
+            } else if (previewRes.data instanceof Blob) {
+              text = await previewRes.data.text()
+            } else if (typeof previewRes.data.text === 'function') {
+              text = await previewRes.data.text()
+            } else {
+              const blob = new Blob([previewRes.data])
+              text = await blob.text()
+            }
             const lines = text.split('\n').filter(line => line.trim())
             if (lines.length > 0) {
-              previewHeaders.value = lines[0].split(',').map(h => h.trim())
+              previewHeaders.value = lines[0].split(',').map(h => String(h ?? '').trim())
               previewData.value = lines.slice(1).map(line => line.split(',').map(c => c.trim()))
             }
           }
