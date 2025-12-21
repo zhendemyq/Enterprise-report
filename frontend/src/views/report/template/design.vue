@@ -287,19 +287,38 @@
             <div class="preview-header">
               <h3 class="preview-title">报表预览</h3>
               <div class="preview-actions">
-                <el-button size="small">
+                <el-button size="small" :disabled="!previewData.length" @click="handleExportExcel">
                   <el-icon><Download /></el-icon>
                   导出 Excel
                 </el-button>
-                <el-button size="small">
+                <el-button size="small" :disabled="!previewData.length" @click="handleExportPdf">
                   <el-icon><Document /></el-icon>
                   导出 PDF
                 </el-button>
               </div>
             </div>
-            
+
             <div class="preview-content">
-              <div class="preview-placeholder">
+              <!-- 加载中 -->
+              <div v-if="previewLoading" class="preview-loading">
+                <el-icon class="loading-icon" :size="48"><Loading /></el-icon>
+                <p>正在生成预览...</p>
+              </div>
+              <!-- 预览数据表格 -->
+              <div v-else-if="previewData.length > 0" class="preview-table-wrapper">
+                <el-table :data="previewData" border stripe max-height="calc(100vh - 300px)">
+                  <el-table-column
+                    v-for="(col, index) in previewColumns"
+                    :key="index"
+                    :prop="col"
+                    :label="col"
+                    min-width="120"
+                  />
+                </el-table>
+                <p class="preview-info">共 {{ previewData.length }} 条数据</p>
+              </div>
+              <!-- 空状态 -->
+              <div v-else class="preview-placeholder">
                 <el-icon :size="48"><Picture /></el-icon>
                 <p>点击「生成预览」按钮查看报表效果</p>
                 <el-button type="primary" @click="generatePreview">
@@ -447,6 +466,12 @@ const bgColor = ref('')
 const fontColor = ref('#000000')
 const pageSize = ref(1000)
 const enableCache = ref(true)
+
+// 预览相关
+const previewLoading = ref(false)
+const previewData = ref([])
+const previewColumns = ref([])
+const generatedReportId = ref(null)
 
 const cellData = reactive({})
 
@@ -694,8 +719,66 @@ const handlePreview = () => {
 }
 
 // 生成预览
-const generatePreview = () => {
-  ElMessage.info('正在生成预览...')
+const generatePreview = async () => {
+  if (!datasourceId.value) {
+    ElMessage.warning('请先选择数据源')
+    activeTab.value = 'data'
+    return
+  }
+
+  if (!querySql.value.trim()) {
+    ElMessage.warning('请先配置SQL查询')
+    activeTab.value = 'data'
+    return
+  }
+
+  previewLoading.value = true
+  previewData.value = []
+  previewColumns.value = []
+
+  try {
+    // 直接执行SQL查询获取预览数据
+    const res = await executeQuery(datasourceId.value, querySql.value)
+    const data = res.data || []
+
+    if (data.length > 0) {
+      previewColumns.value = Object.keys(data[0])
+      previewData.value = data
+      ElMessage.success(`预览成功，共 ${data.length} 条数据`)
+    } else {
+      ElMessage.info('查询结果为空')
+    }
+  } catch (error) {
+    console.error('预览失败:', error)
+    ElMessage.error('预览失败: ' + (error.message || '请检查SQL配置'))
+  } finally {
+    previewLoading.value = false
+  }
+}
+
+// 导出Excel
+const handleExportExcel = async () => {
+  if (previewData.value.length === 0) {
+    ElMessage.warning('没有可导出的数据')
+    return
+  }
+
+  try {
+    // 使用xlsx库导出
+    const worksheet = XLSX.utils.json_to_sheet(previewData.value)
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, '报表数据')
+    XLSX.writeFile(workbook, `${templateName.value}_预览.xlsx`)
+    ElMessage.success('导出成功')
+  } catch (error) {
+    console.error('导出失败:', error)
+    ElMessage.error('导出失败')
+  }
+}
+
+// 导出PDF
+const handleExportPdf = () => {
+  ElMessage.info('PDF导出功能需要后端支持，请使用报表生成功能')
 }
 
 // 保存
@@ -1165,16 +1248,48 @@ const handlePublish = async () => {
 
 .preview-placeholder {
   text-align: center;
-  
+
   .el-icon {
     color: $text-tertiary;
     margin-bottom: 16px;
   }
-  
+
   p {
     color: $text-secondary;
     margin-bottom: 16px;
   }
+}
+
+.preview-loading {
+  text-align: center;
+
+  .loading-icon {
+    color: $primary-color;
+    animation: rotate 1s linear infinite;
+    margin-bottom: 16px;
+  }
+
+  p {
+    color: $text-secondary;
+  }
+}
+
+@keyframes rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.preview-table-wrapper {
+  width: 100%;
+  padding: 16px;
+  overflow: auto;
+}
+
+.preview-info {
+  font-size: 12px;
+  color: $text-secondary;
+  margin-top: 12px;
+  text-align: right;
 }
 
 // 右侧属性面板
