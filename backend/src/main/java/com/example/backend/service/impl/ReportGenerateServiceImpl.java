@@ -431,6 +431,76 @@ public class ReportGenerateServiceImpl extends ServiceImpl<ReportRecordMapper, R
     }
 
     /**
+     * 从模板配置中提取字段布局
+     * @param template 报表模板
+     * @return 字段布局列表，每个元素包含 field(字段名) 和 label(显示名称)
+     */
+    private List<Map<String, String>> extractFieldLayout(ReportTemplate template) {
+        Map<String, Object> templateConfig = template.getTemplateConfig();
+        if (templateConfig == null) {
+            return null;
+        }
+
+        // 尝试从 spreadsheetData.cellData 中提取字段布局
+        Map<String, Object> spreadsheetData = (Map<String, Object>) templateConfig.get("spreadsheetData");
+        if (spreadsheetData == null) {
+            // 兼容旧格式：直接从 cellData 中提取
+            spreadsheetData = (Map<String, Object>) templateConfig.get("cellData");
+            if (spreadsheetData == null) {
+                return null;
+            }
+        }
+
+        Map<String, Object> cellData = (Map<String, Object>) spreadsheetData.get("cellData");
+        if (cellData == null) {
+            cellData = spreadsheetData; // 兼容直接存储 cellData 的情况
+        }
+
+        // 解析单元格数据，提取字段映射
+        List<Map<String, String>> fieldMappings = new java.util.ArrayList<>();
+        java.util.regex.Pattern fieldPattern = java.util.regex.Pattern.compile("\\$\\{(\\w+)\\}");
+
+        for (Map.Entry<String, Object> entry : cellData.entrySet()) {
+            String cellRef = entry.getKey();
+            Object value = entry.getValue();
+            if (value == null) continue;
+
+            String cellValue = value.toString();
+            java.util.regex.Matcher matcher = fieldPattern.matcher(cellValue);
+            if (matcher.find()) {
+                String fieldName = matcher.group(1);
+
+                // 提取列号
+                String col = cellRef.replaceAll("\\d+", "");
+                int row = Integer.parseInt(cellRef.replaceAll("[A-Z]+", ""));
+
+                // 查找该列的表头（假设表头在第1行）
+                String headerCell = col + "1";
+                Object headerValue = cellData.get(headerCell);
+                String label = fieldName;
+                if (headerValue != null) {
+                    String headerStr = headerValue.toString();
+                    if (!headerStr.startsWith("${")) {
+                        label = headerStr;
+                    }
+                }
+
+                Map<String, String> mapping = new java.util.HashMap<>();
+                mapping.put("field", fieldName);
+                mapping.put("label", label);
+                mapping.put("col", col);
+                fieldMappings.add(mapping);
+            }
+        }
+
+        // 按列排序
+        String colOrder = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        fieldMappings.sort((a, b) -> colOrder.indexOf(a.get("col")) - colOrder.indexOf(b.get("col")));
+
+        return fieldMappings.isEmpty() ? null : fieldMappings;
+    }
+
+    /**
      * 生成Excel文件（使用EasyExcel流式写入）
      */
     private void generateExcel(ReportTemplate template, List<Map<String, Object>> dataList, String filePath) {
@@ -443,11 +513,26 @@ public class ReportGenerateServiceImpl extends ServiceImpl<ReportRecordMapper, R
             return;
         }
 
+        // 尝试从模板配置中提取字段布局
+        List<Map<String, String>> fieldLayout = extractFieldLayout(template);
+
+        List<String> headers;
+        List<String> fields;
+
+        if (fieldLayout != null && !fieldLayout.isEmpty()) {
+            // 使用设计器布局
+            headers = fieldLayout.stream().map(f -> f.get("label")).toList();
+            fields = fieldLayout.stream().map(f -> f.get("field")).toList();
+            logger.info("使用设计器布局生成报表，字段数: {}", fields.size());
+        } else {
+            // 没有设计器布局，使用所有字段
+            headers = new java.util.ArrayList<>(dataList.get(0).keySet());
+            fields = headers;
+            logger.info("未找到设计器布局，使用全部字段生成报表，字段数: {}", fields.size());
+        }
+
         try (ExcelWriter excelWriter = EasyExcel.write(filePath).build()) {
             WriteSheet writeSheet = EasyExcel.writerSheet("报表数据").build();
-
-            // 获取表头（从第一行数据的key）
-            List<String> headers = new java.util.ArrayList<>(dataList.get(0).keySet());
 
             // 先写入表头行
             List<List<Object>> headerRow = List.of(headers.stream().map(h -> (Object) h).toList());
@@ -462,9 +547,10 @@ public class ReportGenerateServiceImpl extends ServiceImpl<ReportRecordMapper, R
                 int toIndex = Math.min(fromIndex + pageSize, totalSize);
                 List<Map<String, Object>> pageData = dataList.subList(fromIndex, toIndex);
 
-                // 转换为List<List<Object>>格式，按表头顺序获取值
+                // 转换为List<List<Object>>格式，按字段顺序获取值
+                List<String> finalFields = fields;
                 List<List<Object>> writeData = pageData.stream()
-                        .map(row -> headers.stream().map(h -> row.get(h)).toList())
+                        .map(row -> finalFields.stream().map(f -> row.get(f)).toList())
                         .toList();
 
                 excelWriter.write(writeData, writeSheet);

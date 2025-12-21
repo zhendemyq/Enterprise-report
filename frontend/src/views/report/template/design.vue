@@ -718,6 +718,51 @@ const handlePreview = () => {
   activeTab.value = 'preview'
 }
 
+// 从设计器中提取字段布局
+const extractFieldLayout = () => {
+  if (!univerRef.value) return null
+
+  const spreadsheetData = univerRef.value.exportToJson()
+  if (!spreadsheetData || !spreadsheetData.cellData) return null
+
+  const cellData = spreadsheetData.cellData
+  const fieldPattern = /\$\{(\w+)\}/
+
+  // 解析单元格数据，提取字段映射
+  // 格式: { col: 'A', row: 1, field: 'product_name', label: '产品名称' }
+  const fieldMappings = []
+  const headerRow = {} // 存储表头行的内容
+
+  // 遍历所有单元格
+  for (const [cellRef, value] of Object.entries(cellData)) {
+    if (!value) continue
+
+    const match = value.match(fieldPattern)
+    if (match) {
+      const col = cellRef.match(/^[A-Z]+/)[0]
+      const row = parseInt(cellRef.match(/\d+$/)[0])
+      const fieldName = match[1]
+
+      // 查找该列的表头（假设表头在第1行）
+      const headerCell = `${col}1`
+      const headerValue = cellData[headerCell] || fieldName
+
+      fieldMappings.push({
+        col,
+        row,
+        field: fieldName,
+        label: headerValue.startsWith('${') ? fieldName : headerValue
+      })
+    }
+  }
+
+  // 按列排序
+  const colOrder = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+  fieldMappings.sort((a, b) => colOrder.indexOf(a.col) - colOrder.indexOf(b.col))
+
+  return fieldMappings.length > 0 ? fieldMappings : null
+}
+
 // 生成预览
 const generatePreview = async () => {
   if (!datasourceId.value) {
@@ -742,9 +787,32 @@ const generatePreview = async () => {
     const data = res.data || []
 
     if (data.length > 0) {
-      previewColumns.value = Object.keys(data[0])
-      previewData.value = data
-      ElMessage.success(`预览成功，共 ${data.length} 条数据`)
+      // 尝试从设计器中提取字段布局
+      const fieldLayout = extractFieldLayout()
+
+      if (fieldLayout && fieldLayout.length > 0) {
+        // 使用设计器布局：只显示设计器中配置的字段
+        const layoutFields = fieldLayout.map(f => f.field)
+        const layoutLabels = fieldLayout.map(f => f.label)
+
+        // 过滤数据，只保留设计器中配置的字段
+        const filteredData = data.map(row => {
+          const newRow = {}
+          fieldLayout.forEach(f => {
+            newRow[f.label] = row[f.field] !== undefined ? row[f.field] : ''
+          })
+          return newRow
+        })
+
+        previewColumns.value = layoutLabels
+        previewData.value = filteredData
+        ElMessage.success(`预览成功，共 ${data.length} 条数据（按设计器布局显示 ${layoutFields.length} 个字段）`)
+      } else {
+        // 没有设计器布局，显示所有字段
+        previewColumns.value = Object.keys(data[0])
+        previewData.value = data
+        ElMessage.success(`预览成功，共 ${data.length} 条数据（显示全部字段，可在设计器中拖拽字段来自定义布局）`)
+      }
     } else {
       ElMessage.info('查询结果为空')
     }
