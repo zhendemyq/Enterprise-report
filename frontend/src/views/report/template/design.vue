@@ -411,7 +411,7 @@
 import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getTemplateDetail, createTemplate, updateTemplate, publishTemplate } from '@/api/template'
+import { getTemplateDetail, createTemplate, updateTemplate, publishTemplate, saveTemplateDesign } from '@/api/template'
 import { listDatasources, executeQuery, getTables, getTableColumns } from '@/api/datasource'
 import { generateReport, previewReport, downloadReport } from '@/api/report'
 import UniverSpreadsheet from '@/components/UniverSpreadsheet.vue'
@@ -805,8 +805,8 @@ const handleExportPdf = async () => {
       // 生成成功，下载PDF文件
       const downloadRes = await downloadReport(res.data.id)
 
-      // 创建下载链接
-      const blob = new Blob([downloadRes], { type: 'application/pdf' })
+      // 创建下载链接 (downloadRes 是 axios response 对象，需要使用 .data)
+      const blob = new Blob([downloadRes.data], { type: 'application/pdf' })
       const url = window.URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
