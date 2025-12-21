@@ -479,7 +479,19 @@ const loadTemplateDetail = async () => {
       datasourceId.value = res.data.datasourceId
       querySql.value = res.data.querySql || ''
       if (res.data.paramConfig) {
-        paramList.value = JSON.parse(res.data.paramConfig)
+        // 兼容处理：paramConfig 可能是字符串或对象
+        if (typeof res.data.paramConfig === 'string') {
+          try {
+            paramList.value = JSON.parse(res.data.paramConfig)
+          } catch (e) {
+            console.error('解析paramConfig失败:', e)
+            paramList.value = []
+          }
+        } else if (Array.isArray(res.data.paramConfig)) {
+          paramList.value = res.data.paramConfig
+        } else {
+          paramList.value = []
+        }
       }
       if (datasourceId.value) {
         await handleDatasourceChange()
