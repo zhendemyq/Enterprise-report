@@ -159,9 +159,60 @@ public class ReportTemplateServiceImpl extends ServiceImpl<ReportTemplateMapper,
         }
 
         try {
-            Map<String, Object> config = objectMapper.readValue(designJson, 
+            Map<String, Object> config = objectMapper.readValue(designJson,
                     new TypeReference<Map<String, Object>>() {});
+
+            // 更新模板名称
+            if (config.containsKey("templateName")) {
+                template.setTemplateName((String) config.get("templateName"));
+            }
+
+            // 更新模板类型
+            if (config.containsKey("templateType")) {
+                Object templateType = config.get("templateType");
+                if (templateType instanceof Integer) {
+                    template.setTemplateType((Integer) templateType);
+                } else if (templateType instanceof Number) {
+                    template.setTemplateType(((Number) templateType).intValue());
+                }
+            }
+
+            // 更新数据源ID
+            if (config.containsKey("datasourceId")) {
+                Object datasourceId = config.get("datasourceId");
+                if (datasourceId instanceof Long) {
+                    template.setDatasourceId((Long) datasourceId);
+                } else if (datasourceId instanceof Number) {
+                    template.setDatasourceId(((Number) datasourceId).longValue());
+                }
+            }
+
+            // 更新查询SQL
+            if (config.containsKey("querySql")) {
+                template.setQuerySql((String) config.get("querySql"));
+            }
+
+            // 更新参数配置
+            if (config.containsKey("paramConfig")) {
+                Object paramConfig = config.get("paramConfig");
+                if (paramConfig instanceof String) {
+                    // 前端传递的是 JSON 字符串
+                    List<Map<String, Object>> paramList = objectMapper.readValue(
+                            (String) paramConfig, new TypeReference<List<Map<String, Object>>>() {});
+                    template.setParamConfig(paramList);
+                } else if (paramConfig instanceof List) {
+                    template.setParamConfig((List<Map<String, Object>>) paramConfig);
+                }
+            }
+
+            // 更新样式配置
+            if (config.containsKey("styleConfig")) {
+                template.setStyleConfig((Map<String, Object>) config.get("styleConfig"));
+            }
+
+            // 保存完整的模板配置（包含 spreadsheetData 等设计器数据）
             template.setTemplateConfig(config);
+
             updateById(template);
         } catch (Exception e) {
             throw new BusinessException(ResultCode.TEMPLATE_PARSE_ERROR, "模板配置解析失败: " + e.getMessage());
