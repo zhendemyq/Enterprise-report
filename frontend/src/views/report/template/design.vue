@@ -291,7 +291,7 @@
                   <el-icon><Download /></el-icon>
                   导出 Excel
                 </el-button>
-                <el-button size="small" :disabled="!previewData.length" @click="handleExportPdf">
+                <el-button size="small" :disabled="!previewData.length || !templateId" :loading="pdfExporting" @click="handleExportPdf">
                   <el-icon><Document /></el-icon>
                   导出 PDF
                 </el-button>
@@ -777,8 +777,55 @@ const handleExportExcel = async () => {
 }
 
 // 导出PDF
-const handleExportPdf = () => {
-  ElMessage.info('PDF导出功能需要后端支持，请使用报表生成功能')
+const pdfExporting = ref(false)
+
+const handleExportPdf = async () => {
+  if (previewData.value.length === 0) {
+    ElMessage.warning('没有可导出的数据')
+    return
+  }
+
+  // 检查模板是否已保存
+  if (!templateId.value) {
+    ElMessage.warning('请先保存模板后再导出PDF')
+    return
+  }
+
+  pdfExporting.value = true
+  try {
+    // 调用后端生成PDF报表
+    const res = await generateReport({
+      templateId: templateId.value,
+      reportName: `${templateName.value}_预览`,
+      fileType: 'pdf',
+      async: false
+    })
+
+    if (res.data && res.data.id) {
+      // 生成成功，下载PDF文件
+      const downloadRes = await downloadReport(res.data.id)
+
+      // 创建下载链接
+      const blob = new Blob([downloadRes], { type: 'application/pdf' })
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `${templateName.value}_预览.pdf`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+
+      ElMessage.success('PDF导出成功')
+    } else {
+      ElMessage.error('PDF生成失败')
+    }
+  } catch (error) {
+    console.error('PDF导出失败:', error)
+    ElMessage.error('PDF导出失败: ' + (error.message || '请检查后端服务'))
+  } finally {
+    pdfExporting.value = false
+  }
 }
 
 // 保存
