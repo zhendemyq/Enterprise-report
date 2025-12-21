@@ -434,10 +434,26 @@ public class ReportGenerateServiceImpl extends ServiceImpl<ReportRecordMapper, R
      * 生成Excel文件（使用EasyExcel流式写入）
      */
     private void generateExcel(ReportTemplate template, List<Map<String, Object>> dataList, String filePath) {
+        if (dataList.isEmpty()) {
+            // 空数据时创建空文件
+            try (ExcelWriter excelWriter = EasyExcel.write(filePath).build()) {
+                WriteSheet writeSheet = EasyExcel.writerSheet("报表数据").build();
+                excelWriter.write(List.of(), writeSheet);
+            }
+            return;
+        }
+
         try (ExcelWriter excelWriter = EasyExcel.write(filePath).build()) {
             WriteSheet writeSheet = EasyExcel.writerSheet("报表数据").build();
 
-            // 分页写入，避免内存溢出
+            // 获取表头（从第一行数据的key）
+            List<String> headers = new java.util.ArrayList<>(dataList.get(0).keySet());
+
+            // 先写入表头行
+            List<List<Object>> headerRow = List.of(headers.stream().map(h -> (Object) h).toList());
+            excelWriter.write(headerRow, writeSheet);
+
+            // 分页写入数据，避免内存溢出
             int totalSize = dataList.size();
             int pages = (totalSize + pageSize - 1) / pageSize;
 
@@ -446,9 +462,9 @@ public class ReportGenerateServiceImpl extends ServiceImpl<ReportRecordMapper, R
                 int toIndex = Math.min(fromIndex + pageSize, totalSize);
                 List<Map<String, Object>> pageData = dataList.subList(fromIndex, toIndex);
 
-                // 转换为List<List<Object>>格式
+                // 转换为List<List<Object>>格式，按表头顺序获取值
                 List<List<Object>> writeData = pageData.stream()
-                        .map(row -> row.values().stream().toList())
+                        .map(row -> headers.stream().map(h -> row.get(h)).toList())
                         .toList();
 
                 excelWriter.write(writeData, writeSheet);
