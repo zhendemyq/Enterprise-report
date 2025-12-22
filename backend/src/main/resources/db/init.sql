@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS sys_role (
     role_code VARCHAR(50) NOT NULL UNIQUE COMMENT '角色编码',
     role_name VARCHAR(50) NOT NULL COMMENT '角色名称',
     description VARCHAR(200) COMMENT '角色描述',
+    color VARCHAR(20) DEFAULT '#007AFF' COMMENT '角色颜色',
     sort INT DEFAULT 0 COMMENT '排序',
     status TINYINT DEFAULT 1 COMMENT '状态 0-禁用 1-正常',
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',

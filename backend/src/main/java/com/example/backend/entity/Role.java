@@ -28,6 +28,11 @@ public class Role extends BaseEntity {
     private String description;
 
     /**
+     * 角色颜色
+     */
+    private String color;
+
+    /**
      * 排序
      */
     private Integer sort;

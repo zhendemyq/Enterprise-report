@@ -9,6 +9,11 @@ import lombok.Data;
 public class UserQueryDTO extends PageDTO {
 
     /**
+     * 搜索关键词（用户名/昵称/邮箱）
+     */
+    private String keyword;
+
+    /**
      * 用户名
      */
     private String username;
@@ -22,6 +27,11 @@ public class UserQueryDTO extends PageDTO {
      * 状态
      */
     private Integer status;
+
+    /**
+     * 角色ID
+     */
+    private Long roleId;
 
     /**
      * 部门ID

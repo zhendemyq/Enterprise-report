@@ -102,12 +102,18 @@ public class RoleServiceImpl extends ServiceImpl<RoleMapper, Role> implements Ro
     @Override
     public List<RoleVO> listRoles() {
         LambdaQueryWrapper<Role> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Role::getStatus, 1)
-                .orderByAsc(Role::getSort)
+        wrapper.orderByAsc(Role::getSort)
                 .orderByAsc(Role::getId);
         List<Role> roles = list(wrapper);
         return roles.stream()
-                .map(role -> BeanUtil.copyProperties(role, RoleVO.class))
+                .map(role -> {
+                    RoleVO roleVO = BeanUtil.copyProperties(role, RoleVO.class);
+                    // 统计用户数量
+                    roleVO.setUserCount(baseMapper.countUsersByRoleId(role.getId()));
+                    // 判断是否为系统角色（ROLE_ADMIN 和 ROLE_USER 为系统角色）
+                    roleVO.setIsSystem("ROLE_ADMIN".equals(role.getRoleCode()) || "ROLE_USER".equals(role.getRoleCode()));
+                    return roleVO;
+                })
                 .collect(Collectors.toList());
     }
 

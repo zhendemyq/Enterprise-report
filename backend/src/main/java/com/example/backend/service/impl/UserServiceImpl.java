@@ -152,14 +152,39 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     public IPage<UserVO> pageUsers(UserQueryDTO queryDTO) {
         Page<User> page = new Page<>(queryDTO.getPageNum(), queryDTO.getPageSize());
         LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
+
+        // 关键词搜索（用户名、昵称、邮箱）
+        if (StringUtils.isNotBlank(queryDTO.getKeyword())) {
+            wrapper.and(w -> w
+                    .like(User::getUsername, queryDTO.getKeyword())
+                    .or().like(User::getNickname, queryDTO.getKeyword())
+                    .or().like(User::getEmail, queryDTO.getKeyword())
+            );
+        }
+
         wrapper.like(StringUtils.isNotBlank(queryDTO.getUsername()), User::getUsername, queryDTO.getUsername())
                 .like(StringUtils.isNotBlank(queryDTO.getNickname()), User::getNickname, queryDTO.getNickname())
                 .eq(queryDTO.getStatus() != null, User::getStatus, queryDTO.getStatus())
                 .eq(queryDTO.getDeptId() != null, User::getDeptId, queryDTO.getDeptId())
                 .orderByDesc(User::getCreateTime);
 
+        // 如果指定了角色ID，先查询该角色下的用户ID
+        if (queryDTO.getRoleId() != null) {
+            List<Long> userIds = baseMapper.selectUserIdsByRoleId(queryDTO.getRoleId());
+            if (userIds.isEmpty()) {
+                // 没有用户拥有该角色，返回空结果
+                return new Page<UserVO>().setRecords(List.of()).setTotal(0);
+            }
+            wrapper.in(User::getId, userIds);
+        }
+
         IPage<User> userPage = page(page, wrapper);
-        return userPage.convert(user -> BeanUtil.copyProperties(user, UserVO.class));
+        return userPage.convert(user -> {
+            UserVO userVO = BeanUtil.copyProperties(user, UserVO.class);
+            // 查询用户角色
+            userVO.setRoles(baseMapper.selectRolesByUserId(user.getId()));
+            return userVO;
+        });
     }
 
     @Override
