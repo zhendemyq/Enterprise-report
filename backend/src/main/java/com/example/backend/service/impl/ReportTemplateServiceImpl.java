@@ -1,6 +1,5 @@
 package com.example.backend.service.impl;
 
-import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.bean.BeanUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -11,8 +10,8 @@ import com.example.backend.dto.ReportTemplateDTO;
 import com.example.backend.dto.ReportTemplateQueryDTO;
 import com.example.backend.entity.ReportTemplate;
 import com.example.backend.exception.BusinessException;
-import com.example.backend.mapper.ReportPermissionMapper;
 import com.example.backend.mapper.ReportTemplateMapper;
+import com.example.backend.service.PermissionService;
 import com.example.backend.service.ReportTemplateService;
 import com.example.backend.vo.ReportTemplateVO;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -21,6 +20,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -35,7 +35,7 @@ public class ReportTemplateServiceImpl extends ServiceImpl<ReportTemplateMapper,
     private ObjectMapper objectMapper;
 
     @Autowired
-    private ReportPermissionMapper reportPermissionMapper;
+    private PermissionService permissionService;
 
     @Override
     public Long createTemplate(ReportTemplateDTO templateDTO) {
@@ -230,18 +230,21 @@ public class ReportTemplateServiceImpl extends ServiceImpl<ReportTemplateMapper,
 
     @Override
     public List<ReportTemplateVO> listUserTemplates() {
-        Long userId = StpUtil.getLoginIdAsLong();
-
-        // 查询用户有查看权限的模板ID (permissionType >= 1)
-        List<Long> templateIds = reportPermissionMapper.selectTemplateIdsByUserId(userId, 1);
+        // 使用权限服务查询用户有查看权限的模板ID (permissionType >= 1)
+        List<Long> templateIds = permissionService.getCurrentUserPermittedTemplateIds(1);
 
         LambdaQueryWrapper<ReportTemplate> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(ReportTemplate::getStatus, 1)
                 .orderByAsc(ReportTemplate::getSort)
                 .orderByDesc(ReportTemplate::getCreateTime);
 
-        // 如果有权限配置，则按权限过滤；否则返回所有已发布模板（兼容无权限配置情况）
-        if (templateIds != null && !templateIds.isEmpty()) {
+        // 如果 templateIds 为 null，表示用户有所有权限（管理员/报表管理员/报表用户）
+        // 如果 templateIds 为空列表，表示用户没有任何权限
+        // 如果 templateIds 不为空，按权限过滤
+        if (templateIds != null) {
+            if (templateIds.isEmpty()) {
+                return Collections.emptyList();
+            }
             wrapper.in(ReportTemplate::getId, templateIds);
         }
 
@@ -256,8 +259,7 @@ public class ReportTemplateServiceImpl extends ServiceImpl<ReportTemplateMapper,
      * @param permissionType 权限类型 1-查看 2-生成 3-下载 4-编辑
      */
     public boolean checkPermission(Long templateId, Integer permissionType) {
-        Long userId = StpUtil.getLoginIdAsLong();
-        return reportPermissionMapper.checkUserPermission(userId, templateId, permissionType) > 0;
+        return permissionService.checkCurrentUserPermission(templateId, permissionType);
     }
 
     private ReportTemplateVO convertToVO(ReportTemplate template) {

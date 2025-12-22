@@ -31,4 +31,20 @@ public interface ReportPermissionMapper extends BaseMapper<ReportPermission> {
             "AND rp.permission_type >= #{permissionType}")
     int checkUserPermission(@Param("userId") Long userId, @Param("templateId") Long templateId,
                            @Param("permissionType") Integer permissionType);
+
+    /**
+     * 获取用户的所有角色编码
+     */
+    @Select("SELECT r.role_code FROM sys_role r " +
+            "INNER JOIN sys_user_role ur ON r.id = ur.role_id " +
+            "WHERE ur.user_id = #{userId} AND r.status = 1")
+    List<String> selectUserRoleCodes(@Param("userId") Long userId);
+
+    /**
+     * 检查用户是否拥有指定角色编码
+     */
+    @Select("SELECT COUNT(1) FROM sys_role r " +
+            "INNER JOIN sys_user_role ur ON r.id = ur.role_id " +
+            "WHERE ur.user_id = #{userId} AND r.role_code = #{roleCode} AND r.status = 1")
+    int checkUserHasRole(@Param("userId") Long userId, @Param("roleCode") String roleCode);
 }

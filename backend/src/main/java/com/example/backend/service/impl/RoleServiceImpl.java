@@ -86,7 +86,7 @@ public class RoleServiceImpl extends ServiceImpl<RoleMapper, Role> implements Ro
         }
 
         // 检查是否为系统角色
-        if ("ROLE_ADMIN".equals(role.getRoleCode()) || "ROLE_USER".equals(role.getRoleCode())) {
+        if (isSystemRole(role.getRoleCode())) {
             throw new BusinessException("系统角色不允许删除");
         }
 
@@ -128,11 +128,26 @@ public class RoleServiceImpl extends ServiceImpl<RoleMapper, Role> implements Ro
                     RoleVO roleVO = BeanUtil.copyProperties(role, RoleVO.class);
                     // 统计用户数量
                     roleVO.setUserCount(baseMapper.countUsersByRoleId(role.getId()));
-                    // 判断是否为系统角色（ROLE_ADMIN 和 ROLE_USER 为系统角色）
-                    roleVO.setIsSystem("ROLE_ADMIN".equals(role.getRoleCode()) || "ROLE_USER".equals(role.getRoleCode()));
+                    // 判断是否为系统角色（核心角色不允许删除）
+                    roleVO.setIsSystem(isSystemRole(role.getRoleCode()));
                     return roleVO;
                 })
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * 判断是否为系统核心角色
+     * 系统角色包括：
+     * - ROLE_ADMIN: 系统管理员
+     * - ROLE_USER: 普通用户
+     * - ROLE_REPORT_MANAGER: 报表管理员
+     * - ROLE_REPORT_USER: 报表用户
+     */
+    private boolean isSystemRole(String roleCode) {
+        return "ROLE_ADMIN".equals(roleCode)
+            || "ROLE_USER".equals(roleCode)
+            || "ROLE_REPORT_MANAGER".equals(roleCode)
+            || "ROLE_REPORT_USER".equals(roleCode);
     }
 
     @Override
