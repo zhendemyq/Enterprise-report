@@ -1,5 +1,6 @@
 package com.example.backend.controller;
 
+import cn.dev33.satoken.annotation.SaCheckRole;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.backend.common.Result;
 import com.example.backend.entity.SysNotification;
@@ -73,5 +74,79 @@ public class NotificationController {
     public Result<Void> clearRead() {
         notificationService.clearRead();
         return Result.success();
+    }
+
+    // ========== 管理员接口 ==========
+
+    @Operation(summary = "管理员获取所有通知列表")
+    @SaCheckRole("ADMIN")
+    @GetMapping("/admin/list")
+    public Result<Page<SysNotification>> adminList(
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "10") Integer size,
+            @RequestParam(required = false) Long userId,
+            @RequestParam(required = false) Integer type,
+            @RequestParam(required = false) Integer isRead) {
+        return Result.success(notificationService.getAllNotifications(page, size, userId, type, isRead));
+    }
+
+    @Operation(summary = "管理员获取通知统计")
+    @SaCheckRole("ADMIN")
+    @GetMapping("/admin/stats")
+    public Result<NotificationService.NotificationStats> adminStats() {
+        return Result.success(notificationService.getStats());
+    }
+
+    @Operation(summary = "管理员发送通知给所有用户")
+    @SaCheckRole("ADMIN")
+    @PostMapping("/admin/send-all")
+    public Result<Void> adminSendToAll(@RequestBody SendNotificationRequest request) {
+        notificationService.sendToAll(request.getTitle(), request.getContent(), request.getType());
+        return Result.success();
+    }
+
+    @Operation(summary = "管理员发送通知给指定用户")
+    @SaCheckRole("ADMIN")
+    @PostMapping("/admin/send")
+    public Result<Void> adminSend(@RequestBody SendNotificationRequest request) {
+        if (request.getUserIds() != null && !request.getUserIds().isEmpty()) {
+            notificationService.sendToUsers(request.getUserIds(), request.getTitle(), request.getContent(), request.getType());
+        }
+        return Result.success();
+    }
+
+    @Operation(summary = "管理员删除通知")
+    @SaCheckRole("ADMIN")
+    @DeleteMapping("/admin/{id}")
+    public Result<Void> adminDelete(@PathVariable Long id) {
+        notificationService.adminDelete(id);
+        return Result.success();
+    }
+
+    @Operation(summary = "管理员批量删除通知")
+    @SaCheckRole("ADMIN")
+    @DeleteMapping("/admin/batch")
+    public Result<Void> adminBatchDelete(@RequestBody List<Long> ids) {
+        notificationService.adminBatchDelete(ids);
+        return Result.success();
+    }
+
+    /**
+     * 发送通知请求
+     */
+    public static class SendNotificationRequest {
+        private String title;
+        private String content;
+        private Integer type;
+        private List<Long> userIds;
+
+        public String getTitle() { return title; }
+        public void setTitle(String title) { this.title = title; }
+        public String getContent() { return content; }
+        public void setContent(String content) { this.content = content; }
+        public Integer getType() { return type; }
+        public void setType(Integer type) { this.type = type; }
+        public List<Long> getUserIds() { return userIds; }
+        public void setUserIds(List<Long> userIds) { this.userIds = userIds; }
     }
 }

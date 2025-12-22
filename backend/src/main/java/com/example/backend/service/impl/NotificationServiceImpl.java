@@ -12,6 +12,8 @@ import com.example.backend.service.NotificationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -45,6 +47,13 @@ public class NotificationServiceImpl implements NotificationService {
         List<User> users = userMapper.selectList(null);
         for (User user : users) {
             send(user.getId(), title, content, type, null, null);
+        }
+    }
+
+    @Override
+    public void sendToUsers(List<Long> userIds, String title, String content, Integer type) {
+        for (Long userId : userIds) {
+            send(userId, title, content, type, null, null);
         }
     }
 
@@ -114,5 +123,55 @@ public class NotificationServiceImpl implements NotificationService {
         wrapper.eq(SysNotification::getUserId, userId)
                 .eq(SysNotification::getIsRead, 1);
         notificationMapper.delete(wrapper);
+    }
+
+    // ========== 管理员功能实现 ==========
+
+    @Override
+    public Page<SysNotification> getAllNotifications(int page, int size, Long userId, Integer type, Integer isRead) {
+        Page<SysNotification> pageParam = new Page<>(page, size);
+        LambdaQueryWrapper<SysNotification> wrapper = new LambdaQueryWrapper<>();
+        if (userId != null) {
+            wrapper.eq(SysNotification::getUserId, userId);
+        }
+        if (type != null) {
+            wrapper.eq(SysNotification::getType, type);
+        }
+        if (isRead != null) {
+            wrapper.eq(SysNotification::getIsRead, isRead);
+        }
+        wrapper.orderByDesc(SysNotification::getCreateTime);
+        return notificationMapper.selectPage(pageParam, wrapper);
+    }
+
+    @Override
+    public void adminDelete(Long id) {
+        notificationMapper.deleteById(id);
+    }
+
+    @Override
+    public void adminBatchDelete(List<Long> ids) {
+        notificationMapper.deleteBatchIds(ids);
+    }
+
+    @Override
+    public NotificationStats getStats() {
+        NotificationStats stats = new NotificationStats();
+
+        // 总数
+        stats.setTotalCount(notificationMapper.selectCount(null));
+
+        // 未读数
+        LambdaQueryWrapper<SysNotification> unreadWrapper = new LambdaQueryWrapper<>();
+        unreadWrapper.eq(SysNotification::getIsRead, 0);
+        stats.setUnreadCount(notificationMapper.selectCount(unreadWrapper));
+
+        // 今日发送数
+        LocalDateTime todayStart = LocalDate.now().atStartOfDay();
+        LambdaQueryWrapper<SysNotification> todayWrapper = new LambdaQueryWrapper<>();
+        todayWrapper.ge(SysNotification::getCreateTime, todayStart);
+        stats.setTodayCount(notificationMapper.selectCount(todayWrapper));
+
+        return stats;
     }
 }

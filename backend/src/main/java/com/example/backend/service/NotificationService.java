@@ -21,6 +21,11 @@ public interface NotificationService {
     void sendToAll(String title, String content, Integer type);
 
     /**
+     * 发送通知给指定用户列表
+     */
+    void sendToUsers(List<Long> userIds, String title, String content, Integer type);
+
+    /**
      * 获取当前用户的通知列表
      */
     Page<SysNotification> getMyNotifications(int page, int size);
@@ -54,4 +59,42 @@ public interface NotificationService {
      * 清空所有已读通知
      */
     void clearRead();
+
+    // ========== 管理员功能 ==========
+
+    /**
+     * 管理员获取所有通知列表
+     */
+    Page<SysNotification> getAllNotifications(int page, int size, Long userId, Integer type, Integer isRead);
+
+    /**
+     * 管理员删除通知
+     */
+    void adminDelete(Long id);
+
+    /**
+     * 管理员批量删除通知
+     */
+    void adminBatchDelete(List<Long> ids);
+
+    /**
+     * 获取通知统计信息
+     */
+    NotificationStats getStats();
+
+    /**
+     * 通知统计信息
+     */
+    class NotificationStats {
+        private Long totalCount;
+        private Long unreadCount;
+        private Long todayCount;
+
+        public Long getTotalCount() { return totalCount; }
+        public void setTotalCount(Long totalCount) { this.totalCount = totalCount; }
+        public Long getUnreadCount() { return unreadCount; }
+        public void setUnreadCount(Long unreadCount) { this.unreadCount = unreadCount; }
+        public Long getTodayCount() { return todayCount; }
+        public void setTodayCount(Long todayCount) { this.todayCount = todayCount; }
+    }
 }

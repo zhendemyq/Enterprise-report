@@ -57,3 +57,57 @@ export function clearReadNotifications() {
     method: 'delete'
   })
 }
+
+// ========== 管理员接口 ==========
+
+// 管理员获取所有通知列表
+export function adminGetNotificationList(params) {
+  return request({
+    url: '/notification/admin/list',
+    method: 'get',
+    params
+  })
+}
+
+// 管理员获取通知统计
+export function adminGetStats() {
+  return request({
+    url: '/notification/admin/stats',
+    method: 'get'
+  })
+}
+
+// 管理员发送通知给所有用户
+export function adminSendToAll(data) {
+  return request({
+    url: '/notification/admin/send-all',
+    method: 'post',
+    data
+  })
+}
+
+// 管理员发送通知给指定用户
+export function adminSendNotification(data) {
+  return request({
+    url: '/notification/admin/send',
+    method: 'post',
+    data
+  })
+}
+
+// 管理员删除通知
+export function adminDeleteNotification(id) {
+  return request({
+    url: `/notification/admin/${id}`,
+    method: 'delete'
+  })
+}
+
+// 管理员批量删除通知
+export function adminBatchDeleteNotifications(ids) {
+  return request({
+    url: '/notification/admin/batch',
+    method: 'delete',
+    data: ids
+  })
+}

@@ -212,6 +212,16 @@ const routes = [
           icon: 'UserFilled',
           roles: ADMIN_ROLES
         }
+      },
+      {
+        path: 'message',
+        name: 'SystemMessage',
+        component: () => import('@/views/system/message/index.vue'),
+        meta: {
+          title: '消息管理',
+          icon: 'Message',
+          roles: ADMIN_ROLES
+        }
       }
     ]
   },
