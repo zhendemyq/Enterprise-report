@@ -56,6 +56,19 @@ const routes = [
     ]
   },
   {
+    path: '/notification',
+    component: () => import('@/layout/index.vue'),
+    meta: { hidden: true },
+    children: [
+      {
+        path: '',
+        name: 'NotificationCenter',
+        component: () => import('@/views/notification/index.vue'),
+        meta: { title: '消息中心', hidden: true }
+      }
+    ]
+  },
+  {
     path: '/report',
     component: () => import('@/layout/index.vue'),
     redirect: '/report/generate',
