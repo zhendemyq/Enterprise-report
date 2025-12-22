@@ -72,7 +72,11 @@
         v-for="role in filteredRoleList"
         :key="role.id"
         class="role-card"
-        :class="{ disabled: role.status === 0, 'is-admin': isAdminRole(role.roleCode) }"
+        :class="{
+          disabled: role.status === 0,
+          'is-admin': isAdminRole(role.roleCode),
+          'is-manager': isReportManagerRole(role.roleCode)
+        }"
       >
         <!-- 角色卡片头部 -->
         <div class="card-header">
@@ -123,10 +127,10 @@
                   <el-icon><Edit /></el-icon>
                   编辑信息
                 </el-dropdown-item>
-                <el-dropdown-item command="permission" :disabled="isAdminRole(role.roleCode)">
+                <el-dropdown-item command="permission" :disabled="isAdminRole(role.roleCode) || isReportManagerRole(role.roleCode)">
                   <el-icon><Key /></el-icon>
                   权限配置
-                  <el-tag v-if="isAdminRole(role.roleCode)" size="small" type="info" style="margin-left: 8px">
+                  <el-tag v-if="isAdminRole(role.roleCode) || isReportManagerRole(role.roleCode)" size="small" type="info" style="margin-left: 8px">
                     拥有全部
                   </el-tag>
                 </el-dropdown-item>
@@ -194,6 +198,11 @@
         <div v-if="isAdminRole(role.roleCode)" class="admin-badge">
           <el-icon><StarFilled /></el-icon>
           拥有所有权限
+        </div>
+        <!-- 报表管理员标识条 -->
+        <div v-else-if="isReportManagerRole(role.roleCode)" class="manager-badge">
+          <el-icon><Key /></el-icon>
+          拥有所有模板权限
         </div>
       </div>
 
@@ -402,7 +411,7 @@
 
       <div class="perm-tip">
         <el-icon><InfoFilled /></el-icon>
-        <span>勾选模板后，该角色下的用户将拥有对应模板的查看、生成、下载、编辑权限。系统管理员自动拥有所有权限，无需配置。</span>
+        <span>勾选模板后，该角色下的用户将拥有对应模板的查看、生成、下载、编辑权限。系统管理员和报表管理员自动拥有所有权限，无需配置。</span>
       </div>
 
       <template #footer>
@@ -809,6 +818,10 @@ const handlePermission = async (role) => {
     ElMessage.info('系统管理员自动拥有所有权限，无需配置')
     return
   }
+  if (isReportManagerRole(role.roleCode)) {
+    ElMessage.info('报表管理员自动拥有所有模板的完整权限，无需配置')
+    return
+  }
 
   currentRole.value = role
   permSearchKeyword.value = ''
@@ -1094,6 +1107,11 @@ watch(permSearchKeyword, (val) => {
     background: linear-gradient(135deg, $bg-primary, rgba($danger-color, 0.02));
   }
 
+  &.is-manager {
+    border: 2px solid rgba($primary-color, 0.3);
+    background: linear-gradient(135deg, $bg-primary, rgba($primary-color, 0.02));
+  }
+
   &.add-card {
     display: flex;
     flex-direction: column;
@@ -1133,6 +1151,21 @@ watch(permSearchKeyword, (val) => {
   right: 0;
   padding: 6px 12px;
   background: linear-gradient(135deg, $danger-color, #FF6B6B);
+  color: #fff;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.manager-badge {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 6px 12px;
+  background: linear-gradient(135deg, $primary-color, #5B8DEF);
   color: #fff;
   font-size: 12px;
   display: flex;
