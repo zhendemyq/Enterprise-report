@@ -91,7 +91,7 @@
         <div class="section-card recent-reports">
           <div class="card-header">
             <h3 class="card-title">最近生成</h3>
-            <el-button text type="primary" @click="goToRecords">
+            <el-button type="primary" size="small" round @click="goToRecords">
               查看全部
               <el-icon class="ml-sm"><ArrowRight /></el-icon>
             </el-button>
