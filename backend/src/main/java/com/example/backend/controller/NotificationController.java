@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.backend.common.Result;
 import com.example.backend.entity.SysNotification;
 import com.example.backend.service.NotificationService;
+import com.example.backend.vo.NotificationVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -81,13 +82,13 @@ public class NotificationController {
     @Operation(summary = "管理员获取所有通知列表")
     @SaCheckRole("ADMIN")
     @GetMapping("/admin/list")
-    public Result<Page<SysNotification>> adminList(
+    public Result<Page<NotificationVO>> adminList(
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer size,
             @RequestParam(required = false) Long userId,
             @RequestParam(required = false) Integer type,
             @RequestParam(required = false) Integer isRead) {
-        return Result.success(notificationService.getAllNotifications(page, size, userId, type, isRead));
+        return Result.success(notificationService.getAllNotificationsWithUsername(page, size, userId, type, isRead));
     }
 
     @Operation(summary = "管理员获取通知统计")

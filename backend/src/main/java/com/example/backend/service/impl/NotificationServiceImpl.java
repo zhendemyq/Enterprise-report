@@ -9,12 +9,16 @@ import com.example.backend.entity.User;
 import com.example.backend.mapper.SysNotificationMapper;
 import com.example.backend.mapper.UserMapper;
 import com.example.backend.service.NotificationService;
+import com.example.backend.vo.NotificationVO;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 系统通知服务实现
@@ -142,6 +146,34 @@ public class NotificationServiceImpl implements NotificationService {
         }
         wrapper.orderByDesc(SysNotification::getCreateTime);
         return notificationMapper.selectPage(pageParam, wrapper);
+    }
+
+    @Override
+    public Page<NotificationVO> getAllNotificationsWithUsername(int page, int size, Long userId, Integer type, Integer isRead) {
+        Page<SysNotification> notificationPage = getAllNotifications(page, size, userId, type, isRead);
+
+        // 获取所有用户ID
+        List<Long> userIds = notificationPage.getRecords().stream()
+                .map(SysNotification::getUserId)
+                .distinct()
+                .collect(Collectors.toList());
+
+        // 批量查询用户
+        Map<Long, User> userMap = userIds.isEmpty() ? Map.of() :
+                userMapper.selectBatchIds(userIds).stream()
+                        .collect(Collectors.toMap(User::getId, u -> u));
+
+        // 转换为VO
+        Page<NotificationVO> voPage = new Page<>(page, size, notificationPage.getTotal());
+        voPage.setRecords(notificationPage.getRecords().stream().map(n -> {
+            NotificationVO vo = new NotificationVO();
+            BeanUtils.copyProperties(n, vo);
+            User user = userMap.get(n.getUserId());
+            vo.setUsername(user != null ? (user.getNickname() != null ? user.getNickname() : user.getUsername()) : "用户" + n.getUserId());
+            return vo;
+        }).collect(Collectors.toList()));
+
+        return voPage;
     }
 
     @Override

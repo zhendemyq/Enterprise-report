@@ -2,6 +2,7 @@ package com.example.backend.service;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.backend.entity.SysNotification;
+import com.example.backend.vo.NotificationVO;
 
 import java.util.List;
 
@@ -66,6 +67,11 @@ public interface NotificationService {
      * 管理员获取所有通知列表
      */
     Page<SysNotification> getAllNotifications(int page, int size, Long userId, Integer type, Integer isRead);
+
+    /**
+     * 管理员获取所有通知列表（带用户名）
+     */
+    Page<NotificationVO> getAllNotificationsWithUsername(int page, int size, Long userId, Integer type, Integer isRead);
 
     /**
      * 管理员删除通知
