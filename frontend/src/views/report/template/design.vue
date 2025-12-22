@@ -861,7 +861,7 @@ const handleDatasourceChange = async () => {
       await loadTableColumns(tableName.value)
       // 如果SQL为空，自动生成默认SQL
       if (!querySql.value.trim()) {
-        querySql.value = `SELECT * FROM ${tableName.value} WHERE status = 1`
+        querySql.value = `SELECT * FROM ${tableName.value}`
       }
     } else {
       fieldList.value = []
