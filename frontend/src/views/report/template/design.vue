@@ -287,6 +287,10 @@
             <div class="preview-header">
               <h3 class="preview-title">报表预览</h3>
               <div class="preview-actions">
+                <el-button size="small" type="primary" :loading="previewLoading" @click="generatePreview">
+                  <el-icon><RefreshRight /></el-icon>
+                  {{ previewData.length > 0 ? '刷新预览' : '生成预览' }}
+                </el-button>
                 <el-button size="small" :disabled="!previewData.length" @click="handleExportExcel">
                   <el-icon><Download /></el-icon>
                   导出 Excel
