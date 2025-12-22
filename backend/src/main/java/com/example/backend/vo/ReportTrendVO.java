@@ -16,7 +16,12 @@ public class ReportTrendVO {
     private List<String> dates;
 
     /**
-     * 数量列表
+     * 生成数量列表
      */
     private List<Long> counts;
+
+    /**
+     * 下载次数列表
+     */
+    private List<Long> downloadCounts;
 }

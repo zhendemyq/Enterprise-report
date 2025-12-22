@@ -234,6 +234,7 @@ public class DashboardServiceImpl implements DashboardService {
         ReportTrendVO trend = new ReportTrendVO();
         List<String> dates = new ArrayList<>();
         List<Long> counts = new ArrayList<>();
+        List<Long> downloadCounts = new ArrayList<>();
 
         LocalDate today = LocalDate.now();
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MM-dd");
@@ -268,8 +269,21 @@ public class DashboardServiceImpl implements DashboardService {
                 }
                 Long count = reportRecordMapper.selectCount(wrapper);
 
+                // 统计下载次数
+                LambdaQueryWrapper<ReportRecord> downloadWrapper = new LambdaQueryWrapper<>();
+                downloadWrapper.ge(ReportRecord::getCreateTime, monthStart.atStartOfDay())
+                        .lt(ReportRecord::getCreateTime, monthEnd.atStartOfDay());
+                if (!isAdmin) {
+                    downloadWrapper.eq(ReportRecord::getCreateBy, currentUserId);
+                }
+                List<ReportRecord> records = reportRecordMapper.selectList(downloadWrapper);
+                Long downloadCount = records.stream()
+                        .mapToLong(r -> r.getDownloadCount() != null ? r.getDownloadCount() : 0)
+                        .sum();
+
                 dates.add(monthStart.format(formatter));
                 counts.add(count);
+                downloadCounts.add(downloadCount);
             }
         } else {
             // 按天统计
@@ -287,13 +301,27 @@ public class DashboardServiceImpl implements DashboardService {
                 }
                 Long count = reportRecordMapper.selectCount(wrapper);
 
+                // 统计下载次数
+                LambdaQueryWrapper<ReportRecord> downloadWrapper = new LambdaQueryWrapper<>();
+                downloadWrapper.ge(ReportRecord::getCreateTime, dayStart)
+                        .lt(ReportRecord::getCreateTime, dayEnd);
+                if (!isAdmin) {
+                    downloadWrapper.eq(ReportRecord::getCreateBy, currentUserId);
+                }
+                List<ReportRecord> records = reportRecordMapper.selectList(downloadWrapper);
+                Long downloadCount = records.stream()
+                        .mapToLong(r -> r.getDownloadCount() != null ? r.getDownloadCount() : 0)
+                        .sum();
+
                 dates.add(date.format(formatter));
                 counts.add(count);
+                downloadCounts.add(downloadCount);
             }
         }
 
         trend.setDates(dates);
         trend.setCounts(counts);
+        trend.setDownloadCounts(downloadCounts);
         return trend;
     }
 

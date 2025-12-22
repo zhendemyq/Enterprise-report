@@ -360,7 +360,7 @@ const loadTrendData = async () => {
       trendData.value = {
         labels: res.data.dates || [],
         generateData: res.data.counts || [],
-        downloadData: [] // 后端暂未返回下载数据，使用空数组
+        downloadData: res.data.downloadCounts || []
       }
     }
   } catch (error) {
