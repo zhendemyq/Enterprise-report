@@ -84,7 +84,7 @@
                   @keydown.tab.prevent="moveToNextCell"
                   @keydown.esc="cancelEdit"
                 />
-                <span v-else class="cell-content">{{ getDisplayValue(col, row) }}</span>
+                <span v-else class="cell-content" :style="getCellContentStyle(col, row)">{{ getDisplayValue(col, row) }}</span>
               </td>
             </tr>
           </tbody>
@@ -212,17 +212,26 @@ const isFormula = (col, row) => {
   return value.startsWith('=') || (value.startsWith('${') && value.endsWith('}'))
 }
 
-// 获取单元格样式
+// 获取单元格样式（背景色等）
 const getCellStyle = (col, row) => {
+  const style = fallbackCellStyles[`${col}${row}`] || {}
+  const result = {}
+
+  if (style.textAlign) result.textAlign = style.textAlign
+  if (style.backgroundColor) result.backgroundColor = style.backgroundColor
+
+  return result
+}
+
+// 获取单元格内容样式（字体相关）
+const getCellContentStyle = (col, row) => {
   const style = fallbackCellStyles[`${col}${row}`] || {}
   const result = {}
 
   if (style.fontWeight) result.fontWeight = style.fontWeight
   if (style.fontStyle) result.fontStyle = style.fontStyle
   if (style.textDecoration) result.textDecoration = style.textDecoration
-  if (style.textAlign) result.textAlign = style.textAlign
   if (style.fontSize) result.fontSize = `${style.fontSize}px`
-  if (style.backgroundColor) result.backgroundColor = style.backgroundColor
   if (style.color) result.color = style.color
 
   return result
@@ -612,32 +621,25 @@ watch(() => props.workbookData, (newData) => {
   .cell {
     cursor: cell;
     background: #fff;
-    
+
     &:hover {
       background: #f5f7fa;
     }
-    
+
     &.selected {
       background: #ecf5ff;
       outline: 2px solid #409eff;
       outline-offset: -1px;
       z-index: 1;
     }
-    
-    &.has-content {
-      .cell-content {
-        color: #303133;
-      }
-    }
-    
+
     &.is-formula {
       .cell-content {
-        color: #67c23a;
         font-style: italic;
       }
     }
   }
-  
+
   .cell-content {
     display: block;
     padding: 2px 6px;
@@ -645,6 +647,7 @@ watch(() => props.workbookData, (newData) => {
     text-overflow: ellipsis;
     white-space: nowrap;
     line-height: 20px;
+    color: #303133;
   }
   
   .cell-input {
