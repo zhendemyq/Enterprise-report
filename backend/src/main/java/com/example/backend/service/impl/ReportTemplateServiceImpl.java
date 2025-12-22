@@ -248,9 +248,20 @@ public class ReportTemplateServiceImpl extends ServiceImpl<ReportTemplateMapper,
             wrapper.in(ReportTemplate::getId, templateIds);
         }
 
-        return list(wrapper).stream()
+        List<ReportTemplateVO> voList = list(wrapper).stream()
                 .map(this::convertToVO)
                 .collect(Collectors.toList());
+
+        // 为每个模板设置细粒度权限
+        for (ReportTemplateVO vo : voList) {
+            boolean[] permissions = permissionService.getTemplatePermissions(vo.getId());
+            vo.setCanView(permissions[0]);
+            vo.setCanGenerate(permissions[1]);
+            vo.setCanDownload(permissions[2]);
+            vo.setCanEdit(permissions[3]);
+        }
+
+        return voList;
     }
 
     /**

@@ -78,4 +78,11 @@ public interface PermissionService {
      * @return 角色编码列表
      */
     List<String> getUserRoleCodes(Long userId);
+
+    /**
+     * 获取当前用户对指定模板的所有权限
+     * @param templateId 模板ID
+     * @return 权限数组 [canView, canGenerate, canDownload, canEdit]
+     */
+    boolean[] getTemplatePermissions(Long templateId);
 }

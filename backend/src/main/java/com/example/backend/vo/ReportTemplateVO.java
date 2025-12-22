@@ -62,6 +62,26 @@ public class ReportTemplateVO {
      */
     private Integer useCount;
 
+    /**
+     * 细粒度权限 - 是否可查看
+     */
+    private Boolean canView;
+
+    /**
+     * 细粒度权限 - 是否可生成
+     */
+    private Boolean canGenerate;
+
+    /**
+     * 细粒度权限 - 是否可下载
+     */
+    private Boolean canDownload;
+
+    /**
+     * 细粒度权限 - 是否可编辑
+     */
+    private Boolean canEdit;
+
     private String createByName;
 
     private LocalDateTime createTime;

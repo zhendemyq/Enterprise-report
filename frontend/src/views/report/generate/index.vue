@@ -455,6 +455,20 @@ const resetParams = () => {
 
 // 预览
 const handlePreview = async () => {
+  // 权限检查
+  if (!selectedTemplate.value?.canView) {
+    ElMessage.warning('您没有该模板的预览权限')
+    return
+  }
+  if (!selectedTemplate.value?.canGenerate) {
+    ElMessage.warning('您没有该模板的生成权限，无法预览')
+    return
+  }
+  if (!selectedTemplate.value?.canDownload) {
+    ElMessage.warning('您没有该模板的下载权限，无法预览')
+    return
+  }
+
   if (!paramsFormRef.value) return
 
   await paramsFormRef.value.validate(async (valid) => {
@@ -540,8 +554,18 @@ const handlePreview = async () => {
 
 // 生成报表
 const handleGenerate = async () => {
+  // 权限检查
+  if (!selectedTemplate.value?.canGenerate) {
+    ElMessage.warning('您没有该模板的生成权限')
+    return
+  }
+  if (!selectedTemplate.value?.canDownload) {
+    ElMessage.warning('您没有该模板的下载权限，无法生成报表')
+    return
+  }
+
   if (!paramsFormRef.value) return
-  
+
   await paramsFormRef.value.validate(async (valid) => {
     if (valid) {
       generating.value = true
@@ -580,11 +604,17 @@ const handleGenerate = async () => {
 
 // 下载
 const handleDownload = async () => {
+  // 权限检查
+  if (!selectedTemplate.value?.canDownload) {
+    ElMessage.warning('您没有该模板的下载权限')
+    return
+  }
+
   if (!generatedReport.value) return
-  
+
   try {
     const res = await downloadReport(generatedReport.value.id)
-    
+
     // 创建下载链接
     const blob = new Blob([res.data], { type: res.headers['content-type'] })
     const url = window.URL.createObjectURL(blob)
@@ -593,7 +623,7 @@ const handleDownload = async () => {
     a.download = `${generatedReport.value.reportName}.${selectedFormat.value}`
     a.click()
     window.URL.revokeObjectURL(url)
-    
+
     successDialogVisible.value = false
     ElMessage.success('下载成功')
   } catch (error) {
@@ -603,6 +633,12 @@ const handleDownload = async () => {
 
 // 从预览下载
 const handleDownloadFromPreview = () => {
+  // 权限检查
+  if (!selectedTemplate.value?.canDownload) {
+    ElMessage.warning('您没有该模板的下载权限')
+    return
+  }
+
   previewDialogVisible.value = false
   handleDownload()
 }

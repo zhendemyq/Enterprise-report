@@ -143,4 +143,18 @@ public class PermissionServiceImpl implements PermissionService {
     public List<String> getUserRoleCodes(Long userId) {
         return reportPermissionMapper.selectUserRoleCodes(userId);
     }
+
+    @Override
+    public boolean[] getTemplatePermissions(Long templateId) {
+        Long userId = StpUtil.getLoginIdAsLong();
+        boolean[] permissions = new boolean[4];
+
+        // 权限类型: 1-查看 2-生成 3-下载 4-编辑
+        permissions[0] = checkPermission(userId, templateId, 1); // canView
+        permissions[1] = checkPermission(userId, templateId, 2); // canGenerate
+        permissions[2] = checkPermission(userId, templateId, 3); // canDownload
+        permissions[3] = checkPermission(userId, templateId, 4); // canEdit
+
+        return permissions;
+    }
 }

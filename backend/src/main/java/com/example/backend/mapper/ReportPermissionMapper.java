@@ -16,19 +16,21 @@ public interface ReportPermissionMapper extends BaseMapper<ReportPermission> {
 
     /**
      * 查询用户有权限的模板ID列表
+     * 细粒度权限：查找具有指定权限类型记录的模板
      */
     @Select("SELECT DISTINCT rp.template_id FROM report_permission rp " +
             "INNER JOIN sys_user_role ur ON rp.role_id = ur.role_id " +
-            "WHERE ur.user_id = #{userId} AND rp.permission_type >= #{permissionType}")
+            "WHERE ur.user_id = #{userId} AND rp.permission_type = #{permissionType}")
     List<Long> selectTemplateIdsByUserId(@Param("userId") Long userId, @Param("permissionType") Integer permissionType);
 
     /**
      * 检查用户是否有指定模板的权限
+     * 细粒度权限：精确匹配权限类型
      */
     @Select("SELECT COUNT(1) FROM report_permission rp " +
             "INNER JOIN sys_user_role ur ON rp.role_id = ur.role_id " +
             "WHERE ur.user_id = #{userId} AND rp.template_id = #{templateId} " +
-            "AND rp.permission_type >= #{permissionType}")
+            "AND rp.permission_type = #{permissionType}")
     int checkUserPermission(@Param("userId") Long userId, @Param("templateId") Long templateId,
                            @Param("permissionType") Integer permissionType);
 

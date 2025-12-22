@@ -48,3 +48,15 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
+
+# Upload files (generated reports)
+backend/upload/
+upload/
+uploadreports/
+uploadtemp/
+
+# Playwright MCP
+.playwright-mcp/
+
+# Null file
+nul
