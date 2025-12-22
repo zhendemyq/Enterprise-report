@@ -309,7 +309,7 @@ import { listRoles } from '@/api/role'
 // 查询参数
 const queryParams = reactive({
   pageNum: 1,
-  pageSize: 20,
+  pageSize: 10,
   keyword: '',
   status: null,
   roleId: null
