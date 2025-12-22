@@ -13,6 +13,7 @@ import com.example.backend.entity.Role;
 import com.example.backend.exception.BusinessException;
 import com.example.backend.mapper.ReportPermissionMapper;
 import com.example.backend.mapper.RoleMapper;
+import com.example.backend.mapper.UserRoleMapper;
 import com.example.backend.service.RoleService;
 import com.example.backend.vo.RoleVO;
 import org.apache.commons.lang3.StringUtils;
@@ -31,6 +32,9 @@ public class RoleServiceImpl extends ServiceImpl<RoleMapper, Role> implements Ro
 
     @Autowired
     private ReportPermissionMapper reportPermissionMapper;
+
+    @Autowired
+    private UserRoleMapper userRoleMapper;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -81,10 +85,24 @@ public class RoleServiceImpl extends ServiceImpl<RoleMapper, Role> implements Ro
             throw new BusinessException(ResultCode.ROLE_NOT_FOUND);
         }
 
+        // 检查是否为系统角色
+        if ("ROLE_ADMIN".equals(role.getRoleCode()) || "ROLE_USER".equals(role.getRoleCode())) {
+            throw new BusinessException("系统角色不允许删除");
+        }
+
+        // 检查是否有用户使用该角色
+        Integer userCount = baseMapper.countUsersByRoleId(id);
+        if (userCount != null && userCount > 0) {
+            throw new BusinessException("该角色下有 " + userCount + " 位用户，请先移除用户后再删除");
+        }
+
         // 删除角色权限关联
         LambdaQueryWrapper<ReportPermission> permWrapper = new LambdaQueryWrapper<>();
         permWrapper.eq(ReportPermission::getRoleId, id);
         reportPermissionMapper.delete(permWrapper);
+
+        // 删除用户角色关联（物理删除）
+        userRoleMapper.deleteByRoleIdPhysically(id);
 
         // 删除角色
         removeById(id);

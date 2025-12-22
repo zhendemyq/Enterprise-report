@@ -130,10 +130,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         BeanUtil.copyProperties(userDTO, user, "id", "username", "password");
         updateById(user);
 
-        // 更新角色关联
+        // 更新角色关联（使用物理删除避免唯一键冲突）
         if (userDTO.getRoleIds() != null) {
-            userRoleMapper.delete(new LambdaQueryWrapper<UserRole>()
-                    .eq(UserRole::getUserId, id));
+            userRoleMapper.deleteByUserIdPhysically(id);
             for (Long roleId : userDTO.getRoleIds()) {
                 UserRole userRole = new UserRole();
                 userRole.setUserId(id);
