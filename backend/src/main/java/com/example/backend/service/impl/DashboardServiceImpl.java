@@ -123,7 +123,7 @@ public class DashboardServiceImpl implements DashboardService {
             ReportTemplate template = reportTemplateMapper.selectById(templateId);
             if (template != null) {
                 ReportTemplateVO vo = BeanUtil.copyProperties(template, ReportTemplateVO.class);
-                vo.setUsageCount(countMap.get(templateId).intValue());
+                vo.setUseCount(countMap.get(templateId).intValue());
                 result.add(vo);
             }
         }
@@ -137,7 +137,7 @@ public class DashboardServiceImpl implements DashboardService {
             List<ReportTemplate> templates = reportTemplateMapper.selectList(templateWrapper);
             for (ReportTemplate template : templates) {
                 ReportTemplateVO vo = BeanUtil.copyProperties(template, ReportTemplateVO.class);
-                vo.setUsageCount(0);
+                vo.setUseCount(0);
                 result.add(vo);
             }
         }
