@@ -518,6 +518,21 @@ const loadTemplateDetail = async () => {
           paramList.value = []
         }
       }
+
+      // 加载设计器数据（templateConfig）
+      if (res.data.templateConfig) {
+        const config = res.data.templateConfig
+        // 尝试恢复设计器数据
+        if (config.spreadsheetData && univerRef.value) {
+          univerRef.value.importFromJson(config.spreadsheetData)
+        } else if (config.cellData && univerRef.value) {
+          // 兼容旧格式
+          univerRef.value.importFromJson({ cellData: config.cellData })
+        }
+        // 保存到 workbookData 以便后续使用
+        workbookData.value = config.spreadsheetData || config
+      }
+
       if (datasourceId.value) {
         await handleDatasourceChange()
       }
@@ -658,6 +673,10 @@ const selectCell = (cell) => {
 // Univer设计器就绪事件
 const handleUniverReady = ({ univer, workbook }) => {
   console.log('Univer设计器已就绪', univer, workbook)
+  // 设计器准备好后，如果有保存的数据，恢复它
+  if (workbookData.value && univerRef.value) {
+    univerRef.value.importFromJson(workbookData.value)
+  }
 }
 
 // 电子表格变化事件
