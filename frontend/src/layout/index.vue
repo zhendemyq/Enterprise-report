@@ -106,11 +106,53 @@
           </div>
           
           <!-- 通知 -->
-          <el-badge :value="3" :max="99" class="notification-badge">
-            <el-button class="header-icon-btn" circle>
-              <el-icon><Bell /></el-icon>
-            </el-button>
-          </el-badge>
+          <el-popover
+            placement="bottom"
+            :width="360"
+            trigger="click"
+            popper-class="notification-popover"
+            @show="loadNotifications"
+          >
+            <template #reference>
+              <el-badge :value="unreadCount" :max="99" :hidden="unreadCount === 0" class="notification-badge">
+                <el-button class="header-icon-btn" circle>
+                  <el-icon><Bell /></el-icon>
+                </el-button>
+              </el-badge>
+            </template>
+            <div class="notification-panel">
+              <div class="notification-header">
+                <span class="notification-title">通知</span>
+                <el-button v-if="unreadCount > 0" type="primary" link size="small" @click="handleMarkAllRead">
+                  全部已读
+                </el-button>
+              </div>
+              <div class="notification-list" v-loading="notificationLoading">
+                <template v-if="notifications.length > 0">
+                  <div
+                    v-for="item in notifications"
+                    :key="item.id"
+                    class="notification-item"
+                    :class="{ 'is-unread': item.isRead === 0 }"
+                    @click="handleNotificationClick(item)"
+                  >
+                    <div class="notification-icon" :class="getNotificationTypeClass(item.type)">
+                      <el-icon><component :is="getNotificationIcon(item.type)" /></el-icon>
+                    </div>
+                    <div class="notification-content">
+                      <div class="notification-item-title">{{ item.title }}</div>
+                      <div class="notification-item-desc">{{ item.content }}</div>
+                      <div class="notification-time">{{ formatTime(item.createTime) }}</div>
+                    </div>
+                  </div>
+                </template>
+                <el-empty v-else description="暂无通知" :image-size="80" />
+              </div>
+              <div class="notification-footer" v-if="notifications.length > 0">
+                <el-button type="primary" link @click="goToNotificationCenter">查看全部</el-button>
+              </div>
+            </div>
+          </el-popover>
           
           <!-- 用户信息 -->
           <el-dropdown trigger="click" class="user-dropdown">
@@ -156,11 +198,13 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAppStore } from '@/stores/app'
 import { useUserStore } from '@/stores/user'
 import { ElMessageBox } from 'element-plus'
+import { getRecentNotifications, markAsRead, markAllAsRead } from '@/api/notification'
+import dayjs from 'dayjs'
 
 const route = useRoute()
 const router = useRouter()
@@ -169,6 +213,77 @@ const userStore = useUserStore()
 
 const searchKeyword = ref('')
 const cachedViews = ref(['Dashboard'])
+
+// 通知相关
+const notifications = ref([])
+const unreadCount = ref(0)
+const notificationLoading = ref(false)
+
+// 加载通知
+const loadNotifications = async () => {
+  notificationLoading.value = true
+  try {
+    const res = await getRecentNotifications(5)
+    if (res.data) {
+      notifications.value = res.data.list || []
+      unreadCount.value = res.data.unreadCount || 0
+    }
+  } catch (error) {
+    console.error('加载通知失败:', error)
+  } finally {
+    notificationLoading.value = false
+  }
+}
+
+// 获取通知类型样式
+const getNotificationTypeClass = (type) => {
+  const map = { 1: 'system', 2: 'report', 3: 'task' }
+  return map[type] || 'system'
+}
+
+// 获取通知图标
+const getNotificationIcon = (type) => {
+  const map = { 1: 'Bell', 2: 'Document', 3: 'Timer' }
+  return map[type] || 'Bell'
+}
+
+// 格式化时间
+const formatTime = (time) => {
+  if (!time) return ''
+  const now = dayjs()
+  const target = dayjs(time)
+  const diff = now.diff(target, 'minute')
+  if (diff < 1) return '刚刚'
+  if (diff < 60) return `${diff}分钟前`
+  if (diff < 1440) return `${Math.floor(diff / 60)}小时前`
+  return target.format('MM-DD HH:mm')
+}
+
+// 点击通知
+const handleNotificationClick = async (item) => {
+  if (item.isRead === 0) {
+    await markAsRead(item.id)
+    item.isRead = 1
+    unreadCount.value = Math.max(0, unreadCount.value - 1)
+  }
+}
+
+// 全部已读
+const handleMarkAllRead = async () => {
+  await markAllAsRead()
+  notifications.value.forEach(item => item.isRead = 1)
+  unreadCount.value = 0
+}
+
+// 跳转通知中心
+const goToNotificationCenter = () => {
+  router.push('/notification')
+}
+
+// 初始化加载未读数量
+onMounted(() => {
+  loadNotifications()
+})
 
 /**
  * 检查用户是否有权限访问路由
@@ -536,5 +651,109 @@ const handleLogout = async () => {
   flex: 1;
   padding: 24px;
   overflow: auto;
+}
+
+// 通知面板样式
+.notification-panel {
+  margin: -12px;
+}
+
+.notification-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid $border-color;
+}
+
+.notification-title {
+  font-size: 16px;
+  font-weight: $font-weight-semibold;
+  color: $text-primary;
+}
+
+.notification-list {
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.notification-item {
+  display: flex;
+  gap: 12px;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: background $transition-fast;
+
+  &:hover {
+    background: $gray-50;
+  }
+
+  &.is-unread {
+    background: rgba($primary-color, 0.04);
+
+    .notification-item-title {
+      font-weight: $font-weight-semibold;
+    }
+  }
+}
+
+.notification-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: $radius-md;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  &.system {
+    background: rgba($primary-color, 0.1);
+    color: $primary-color;
+  }
+
+  &.report {
+    background: rgba($success-color, 0.1);
+    color: $success-color;
+  }
+
+  &.task {
+    background: rgba($warning-color, 0.1);
+    color: $warning-color;
+  }
+}
+
+.notification-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.notification-item-title {
+  font-size: 14px;
+  color: $text-primary;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.notification-item-desc {
+  font-size: 12px;
+  color: $text-secondary;
+  margin-bottom: 4px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.notification-time {
+  font-size: 12px;
+  color: $text-tertiary;
+}
+
+.notification-footer {
+  padding: 12px 16px;
+  text-align: center;
+  border-top: 1px solid $border-color;
 }
 </style>
