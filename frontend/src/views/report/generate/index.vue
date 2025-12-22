@@ -104,7 +104,7 @@
           <div class="section-card params-config">
             <div class="card-header">
               <h3 class="card-title">参数配置</h3>
-              <el-button link type="primary" @click="resetParams">
+              <el-button text type="primary" @click="resetParams">
                 <el-icon><Refresh /></el-icon>
                 重置
               </el-button>
