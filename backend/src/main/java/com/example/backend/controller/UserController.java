@@ -66,4 +66,11 @@ public class UserController {
         userService.resetPassword(userId);
         return Result.success();
     }
+
+    @Operation(summary = "切换用户状态")
+    @PutMapping("/{id}/status")
+    public Result<Void> toggleStatus(@PathVariable Long id, @RequestParam Integer status) {
+        userService.toggleStatus(id, status);
+        return Result.success();
+    }
 }

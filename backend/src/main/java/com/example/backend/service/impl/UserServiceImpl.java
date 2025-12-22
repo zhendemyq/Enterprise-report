@@ -212,4 +212,18 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         user.setPassword(SecureUtil.md5("123456"));
         updateById(user);
     }
+
+    @Override
+    public void toggleStatus(Long userId, Integer status) {
+        User user = getById(userId);
+        if (user == null) {
+            throw new BusinessException(ResultCode.USER_NOT_EXIST);
+        }
+        // 不允许禁用超级管理员
+        if (userId == 1L && status == 0) {
+            throw new BusinessException("不允许禁用超级管理员");
+        }
+        user.setStatus(status);
+        updateById(user);
+    }
 }

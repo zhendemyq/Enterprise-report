@@ -58,4 +58,9 @@ public interface UserService extends IService<User> {
      * 重置密码
      */
     void resetPassword(Long userId);
+
+    /**
+     * 切换用户状态
+     */
+    void toggleStatus(Long userId, Integer status);
 }

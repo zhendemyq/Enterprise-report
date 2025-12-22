@@ -51,3 +51,12 @@ export function resetPassword(userId) {
     method: 'put'
   })
 }
+
+// 切换用户状态
+export function toggleUserStatus(id, status) {
+  return request({
+    url: `/user/${id}/status`,
+    method: 'put',
+    params: { status }
+  })
+}

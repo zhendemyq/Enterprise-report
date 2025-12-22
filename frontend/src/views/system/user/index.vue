@@ -303,7 +303,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import dayjs from 'dayjs'
-import { pageUsers, createUser, updateUser, deleteUser, resetPassword } from '@/api/user'
+import { pageUsers, createUser, updateUser, deleteUser, resetPassword, toggleUserStatus } from '@/api/user'
 import { listRoles } from '@/api/role'
 
 // 查询参数
@@ -498,8 +498,15 @@ const handleResetPwdSubmit = async () => {
 }
 
 // 状态变更
-const handleStatusChange = (row) => {
-  ElMessage.success(`用户「${row.nickname}」已${row.status ? '启用' : '禁用'}`)
+const handleStatusChange = async (row) => {
+  try {
+    await toggleUserStatus(row.id, row.status)
+    ElMessage.success(`用户「${row.nickname || row.username}」已${row.status ? '启用' : '禁用'}`)
+  } catch (error) {
+    console.error('状态变更失败:', error)
+    // 回滚状态
+    row.status = row.status ? 0 : 1
+  }
 }
 
 // 提交
