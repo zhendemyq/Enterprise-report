@@ -840,6 +840,7 @@ const handleDatasourceChange = async () => {
     fieldList.value = []
     tableList.value = []
     tableName.value = ''
+    querySql.value = ''
     return
   }
 
@@ -858,6 +859,10 @@ const handleDatasourceChange = async () => {
 
     if (tableName.value) {
       await loadTableColumns(tableName.value)
+      // 如果SQL为空，自动生成默认SQL
+      if (!querySql.value.trim()) {
+        querySql.value = `SELECT * FROM ${tableName.value} WHERE status = 1`
+      }
     } else {
       fieldList.value = []
     }
