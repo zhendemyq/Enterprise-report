@@ -515,30 +515,45 @@ const totalUserCount = computed(() => roleList.value.reduce((sum, r) => sum + (r
 
 // 角色分类判断（兼容有无 ROLE_ 前缀）
 const isAdminRole = (roleCode) => {
-  return roleCode === 'ROLE_ADMIN' || roleCode === 'ADMIN'
+  if (!roleCode) return false
+  const code = roleCode.toUpperCase()
+  return code === 'ROLE_ADMIN' || code === 'ADMIN'
 }
 const isReportManagerRole = (roleCode) => {
-  return roleCode === 'ROLE_REPORT_MANAGER' || roleCode === 'REPORT_MANAGER'
+  if (!roleCode) return false
+  const code = roleCode.toUpperCase()
+  return code === 'ROLE_REPORT_MANAGER' || code === 'REPORT_MANAGER'
 }
 const isReportUserRole = (roleCode) => {
-  return roleCode === 'ROLE_REPORT_USER' || roleCode === 'REPORT_USER'
+  if (!roleCode) return false
+  const code = roleCode.toUpperCase()
+  return code === 'ROLE_REPORT_USER' || code === 'REPORT_USER'
+}
+const isReportViewerRole = (roleCode) => {
+  if (!roleCode) return false
+  const code = roleCode.toUpperCase()
+  return code === 'ROLE_REPORT_VIEWER' || code === 'REPORT_VIEWER'
 }
 const isDepartmentRole = (roleCode) => {
+  if (!roleCode) return false
+  const code = roleCode.toUpperCase()
   const deptRoles = [
-    'ROLE_FINANCE_MANAGER', 'FINANCE_MANAGER', 'finance_manager',
-    'ROLE_HR_MANAGER', 'HR_MANAGER', 'hr_manager',
-    'ROLE_SALES_MANAGER', 'SALES_MANAGER', 'sales_manager',
-    'ROLE_WAREHOUSE_MANAGER', 'WAREHOUSE_MANAGER', 'warehouse_manager'
+    'ROLE_FINANCE_MANAGER', 'FINANCE_MANAGER',
+    'ROLE_HR_MANAGER', 'HR_MANAGER',
+    'ROLE_SALES_MANAGER', 'SALES_MANAGER',
+    'ROLE_WAREHOUSE_MANAGER', 'WAREHOUSE_MANAGER'
   ]
-  return deptRoles.includes(roleCode)
+  return deptRoles.includes(code)
 }
 
 // 获取权限层级
+// 4-完全(管理员) 3-管理(报表管理员) 2-操作(报表用户/部门主管) 1-只读(报表查看员)
 const getPermissionLevel = (role) => {
   if (isAdminRole(role.roleCode)) return 4
   if (isReportManagerRole(role.roleCode)) return 3
   if (isReportUserRole(role.roleCode)) return 2
   if (isDepartmentRole(role.roleCode)) return 2
+  if (isReportViewerRole(role.roleCode)) return 1
   // 根据是否为系统角色判断
   if (role.isSystem) return 3
   return 1
