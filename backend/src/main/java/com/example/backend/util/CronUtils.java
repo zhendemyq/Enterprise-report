@@ -16,6 +16,7 @@ import java.util.Optional;
 /**
  * Cron表达式工具类
  * 用于解析Cron表达式和计算下次执行时间
+ * 支持Unix格式(5字段)和Quartz格式(6-7字段)
  */
 public class CronUtils {
 
@@ -24,19 +25,40 @@ public class CronUtils {
     /**
      * Quartz风格的Cron定义（支持秒级）
      */
-    private static final CronDefinition CRON_DEFINITION = CronDefinitionBuilder.instanceDefinitionFor(CronType.QUARTZ);
+    private static final CronDefinition QUARTZ_DEFINITION = CronDefinitionBuilder.instanceDefinitionFor(CronType.QUARTZ);
 
     /**
-     * Cron解析器
+     * Unix风格的Cron定义（5字段）
      */
-    private static final CronParser CRON_PARSER = new CronParser(CRON_DEFINITION);
+    private static final CronDefinition UNIX_DEFINITION = CronDefinitionBuilder.instanceDefinitionFor(CronType.UNIX);
+
+    /**
+     * Quartz Cron解析器
+     */
+    private static final CronParser QUARTZ_PARSER = new CronParser(QUARTZ_DEFINITION);
+
+    /**
+     * Unix Cron解析器
+     */
+    private static final CronParser UNIX_PARSER = new CronParser(UNIX_DEFINITION);
 
     private CronUtils() {
         // 工具类禁止实例化
     }
 
     /**
-     * 解析Cron表达式
+     * 判断是否为Unix格式的Cron表达式（5字段）
+     *
+     * @param cronExpression Cron表达式
+     * @return true-Unix格式，false-Quartz格式
+     */
+    private static boolean isUnixFormat(String cronExpression) {
+        String[] parts = cronExpression.trim().split("\\s+");
+        return parts.length == 5;
+    }
+
+    /**
+     * 解析Cron表达式，自动识别Unix和Quartz格式
      *
      * @param cronExpression Cron表达式
      * @return 解析后的Cron对象
@@ -47,7 +69,12 @@ public class CronUtils {
             throw new IllegalArgumentException("Cron表达式不能为空");
         }
         try {
-            return CRON_PARSER.parse(cronExpression.trim());
+            String trimmed = cronExpression.trim();
+            if (isUnixFormat(trimmed)) {
+                return UNIX_PARSER.parse(trimmed);
+            } else {
+                return QUARTZ_PARSER.parse(trimmed);
+            }
         } catch (Exception e) {
             logger.error("Cron表达式解析失败: {}", cronExpression, e);
             throw new IllegalArgumentException("无效的Cron表达式: " + cronExpression, e);
@@ -55,7 +82,7 @@ public class CronUtils {
     }
 
     /**
-     * 验证Cron表达式是否有效
+     * 验证Cron表达式是否有效（支持Unix和Quartz格式）
      *
      * @param cronExpression Cron表达式
      * @return true-有效，false-无效
@@ -65,7 +92,7 @@ public class CronUtils {
             return false;
         }
         try {
-            CRON_PARSER.parse(cronExpression.trim());
+            parseExpression(cronExpression);
             return true;
         } catch (Exception e) {
             return false;
