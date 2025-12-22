@@ -194,7 +194,7 @@ import {
   adminDeleteNotification,
   adminBatchDeleteNotifications
 } from '@/api/notification'
-import { pageUsers } from '@/api/user'
+import { getUserList } from '@/api/user'
 import dayjs from 'dayjs'
 
 // 定义组件名称
@@ -269,7 +269,7 @@ const loadStats = async () => {
 // 加载用户列表
 const loadUserList = async () => {
   try {
-    const res = await pageUsers({ page: 1, size: 1000 })
+    const res = await getUserList({ page: 1, size: 1000 })
     if (res.data) {
       userList.value = res.data.records || []
     }
