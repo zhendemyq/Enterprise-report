@@ -56,24 +56,38 @@
       <!-- 左侧工具面板 -->
       <div class="left-panel">
         <div class="panel-section">
-          <div class="section-title">组件</div>
+          <div class="section-title">
+            组件
+            <el-tooltip content="双击或拖拽组件到设计器中" placement="right">
+              <el-icon class="help-icon"><QuestionFilled /></el-icon>
+            </el-tooltip>
+          </div>
           <div class="component-list">
-            <div 
-              v-for="comp in components" 
+            <div
+              v-for="comp in components"
               :key="comp.type"
               class="component-item"
               draggable="true"
               @dragstart="handleDragStart($event, comp)"
               @dblclick="handleComponentInsert(comp)"
+              :title="`双击插入${comp.name}组件`"
             >
               <el-icon :size="20"><component :is="comp.icon" /></el-icon>
               <span>{{ comp.name }}</span>
             </div>
           </div>
+          <div class="component-tip">
+            <el-text type="info" size="small">提示：先选中单元格，再双击组件插入</el-text>
+          </div>
         </div>
-        
+
         <div class="panel-section">
-          <div class="section-title">字段绑定</div>
+          <div class="section-title">
+            字段绑定
+            <el-tooltip content="拖拽字段到设计器单元格中绑定数据" placement="right">
+              <el-icon class="help-icon"><QuestionFilled /></el-icon>
+            </el-tooltip>
+          </div>
           <div class="field-list">
             <div v-if="!datasourceId" class="empty-tip">
               请先选择数据源
@@ -420,7 +434,7 @@ import { getTemplateDetail, createTemplate, updateTemplate, publishTemplate, sav
 import { listDatasources, executeQuery, getTables, getTableColumns } from '@/api/datasource'
 import { generateReport, previewReport, downloadReport } from '@/api/report'
 import UniverSpreadsheet from '@/components/UniverSpreadsheet.vue'
-import * as XLSX from 'xlsx'
+import * as XLSX from 'xlsx-js-style'
 
 const route = useRoute()
 const router = useRouter()
@@ -1004,8 +1018,75 @@ const handleExportExcel = async () => {
   }
 
   try {
+    // 获取设计器中的样式数据
+    let cellStyles = {}
+    if (univerRef.value) {
+      const designData = univerRef.value.exportToJson()
+      cellStyles = designData.cellStyles || {}
+    }
+
     // 使用xlsx库导出
     const worksheet = XLSX.utils.json_to_sheet(previewData.value)
+
+    // 应用样式到工作表
+    const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1')
+
+    // 遍历所有单元格应用样式
+    for (let row = range.s.r; row <= range.e.r; row++) {
+      for (let col = range.s.c; col <= range.e.c; col++) {
+        const colLetter = XLSX.utils.encode_col(col)
+        const cellRef = `${colLetter}${row + 1}`
+        const xlsxCellRef = XLSX.utils.encode_cell({ r: row, c: col })
+
+        // 查找对应的样式
+        const style = cellStyles[cellRef]
+        if (style && worksheet[xlsxCellRef]) {
+          // xlsx-js-style 格式的样式对象
+          worksheet[xlsxCellRef].s = {
+            font: {
+              bold: style.fontWeight === 'bold',
+              italic: style.fontStyle === 'italic',
+              underline: style.textDecoration === 'underline',
+              sz: style.fontSize || 12,
+              color: style.color ? { rgb: style.color.replace('#', '') } : undefined
+            },
+            fill: style.backgroundColor ? {
+              fgColor: { rgb: style.backgroundColor.replace('#', '') },
+              patternType: 'solid'
+            } : undefined,
+            alignment: {
+              horizontal: style.textAlign || 'left',
+              vertical: 'center'
+            }
+          }
+        }
+
+        // 为表头行（第一行）添加默认样式
+        if (row === 0 && worksheet[xlsxCellRef]) {
+          worksheet[xlsxCellRef].s = worksheet[xlsxCellRef].s || {}
+          worksheet[xlsxCellRef].s.font = {
+            ...worksheet[xlsxCellRef].s?.font,
+            bold: true
+          }
+          worksheet[xlsxCellRef].s.fill = {
+            fgColor: { rgb: 'F5F7FA' },
+            patternType: 'solid'
+          }
+          worksheet[xlsxCellRef].s.alignment = {
+            horizontal: 'center',
+            vertical: 'center'
+          }
+        }
+      }
+    }
+
+    // 设置列宽
+    const colWidths = []
+    for (let col = range.s.c; col <= range.e.c; col++) {
+      colWidths.push({ wch: 15 }) // 默认列宽15字符
+    }
+    worksheet['!cols'] = colWidths
+
     const workbook = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(workbook, worksheet, '报表数据')
     XLSX.writeFile(workbook, `${templateName.value}_预览.xlsx`)
@@ -1237,6 +1318,19 @@ const handlePublish = async () => {
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  .help-icon {
+    font-size: 14px;
+    color: $text-tertiary;
+    cursor: help;
+
+    &:hover {
+      color: $primary-color;
+    }
+  }
 }
 
 .component-list {
@@ -1255,16 +1349,29 @@ const handlePublish = async () => {
   background: $gray-50;
   cursor: grab;
   transition: all $transition-fast;
-  
+
   &:hover {
     background: $gray-100;
     transform: translateY(-2px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   }
-  
+
+  &:active {
+    cursor: grabbing;
+  }
+
   span {
     font-size: 12px;
     color: $text-secondary;
   }
+}
+
+.component-tip {
+  margin-top: 8px;
+  padding: 8px;
+  background: $gray-50;
+  border-radius: $radius-sm;
+  text-align: center;
 }
 
 .field-list {
