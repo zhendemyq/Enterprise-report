@@ -291,14 +291,19 @@ public class ReportGenerateServiceImpl extends ServiceImpl<ReportRecordMapper, R
         Page<ReportRecord> page = new Page<>(queryDTO.getPageNum(), queryDTO.getPageSize());
         LambdaQueryWrapper<ReportRecord> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(queryDTO.getTemplateId() != null, ReportRecord::getTemplateId, queryDTO.getTemplateId())
-                .like(StringUtils.isNotBlank(queryDTO.getTemplateName()), 
+                .like(StringUtils.isNotBlank(queryDTO.getTemplateName()),
                     ReportRecord::getTemplateName, queryDTO.getTemplateName())
                 .eq(queryDTO.getStatus() != null, ReportRecord::getStatus, queryDTO.getStatus())
                 .eq(StringUtils.isNotBlank(queryDTO.getFileType()), ReportRecord::getFileType, queryDTO.getFileType())
                 .ge(queryDTO.getStartTime() != null, ReportRecord::getCreateTime, queryDTO.getStartTime())
-                .le(queryDTO.getEndTime() != null, ReportRecord::getCreateTime, queryDTO.getEndTime())
-                .eq(ReportRecord::getCreateBy, StpUtil.getLoginIdAsLong())
-                .orderByDesc(ReportRecord::getCreateTime);
+                .le(queryDTO.getEndTime() != null, ReportRecord::getCreateTime, queryDTO.getEndTime());
+
+        // 非管理员只能查看自己创建的记录
+        if (!permissionService.isCurrentUserAdmin()) {
+            wrapper.eq(ReportRecord::getCreateBy, StpUtil.getLoginIdAsLong());
+        }
+
+        wrapper.orderByDesc(ReportRecord::getCreateTime);
 
         IPage<ReportRecord> recordPage = page(page, wrapper);
         return recordPage.convert(this::convertToVO);

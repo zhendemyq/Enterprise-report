@@ -1,5 +1,6 @@
 package com.example.backend.service.impl;
 
+import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.bean.BeanUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -18,6 +19,7 @@ import com.example.backend.mapper.ReportScheduleLogMapper;
 import com.example.backend.mapper.ReportScheduleMapper;
 import com.example.backend.mapper.ReportTemplateMapper;
 import com.example.backend.service.EmailService;
+import com.example.backend.service.PermissionService;
 import com.example.backend.service.ReportGenerateService;
 import com.example.backend.service.ReportScheduleService;
 import com.example.backend.vo.ReportRecordVO;
@@ -59,6 +61,9 @@ public class ReportScheduleServiceImpl extends ServiceImpl<ReportScheduleMapper,
 
     @Autowired
     private EmailService emailService;
+
+    @Autowired
+    private PermissionService permissionService;
 
     @Value("${report.storage.path:./upload/reports}")
     private String storagePath;
@@ -150,8 +155,14 @@ public class ReportScheduleServiceImpl extends ServiceImpl<ReportScheduleMapper,
         wrapper.like(StringUtils.isNotBlank(queryDTO.getTaskName()), ReportSchedule::getTaskName, queryDTO.getTaskName())
                 .eq(queryDTO.getTemplateId() != null, ReportSchedule::getTemplateId, queryDTO.getTemplateId())
                 .eq(queryDTO.getStatus() != null, ReportSchedule::getStatus, queryDTO.getStatus())
-                .eq(queryDTO.getScheduleType() != null, ReportSchedule::getScheduleType, queryDTO.getScheduleType())
-                .orderByDesc(ReportSchedule::getCreateTime);
+                .eq(queryDTO.getScheduleType() != null, ReportSchedule::getScheduleType, queryDTO.getScheduleType());
+
+        // 非管理员只能查看自己创建的任务
+        if (!permissionService.isCurrentUserAdmin()) {
+            wrapper.eq(ReportSchedule::getCreateBy, StpUtil.getLoginIdAsLong());
+        }
+
+        wrapper.orderByDesc(ReportSchedule::getCreateTime);
 
         IPage<ReportSchedule> schedulePage = page(page, wrapper);
         return schedulePage.convert(this::convertToVO);
