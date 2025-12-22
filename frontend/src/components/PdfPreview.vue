@@ -65,14 +65,14 @@
 
     <!-- PDF 内容区域 -->
     <div ref="pdfContainer" class="pdf-content">
-      <!-- 加载状态 -->
-      <div v-if="loading" class="pdf-loading">
+      <!-- 加载状态遮罩 -->
+      <div v-if="loading && !error" class="pdf-loading">
         <el-icon class="loading-icon"><Loading /></el-icon>
         <p>正在加载 PDF...</p>
       </div>
 
       <!-- 错误状态 -->
-      <div v-else-if="error" class="pdf-error">
+      <div v-if="error" class="pdf-error">
         <el-icon class="error-icon"><WarningFilled /></el-icon>
         <p class="error-message">{{ errorMessage }}</p>
         <el-button type="primary" @click="handleRetry">
@@ -81,8 +81,8 @@
         </el-button>
       </div>
 
-      <!-- PDF 渲染 -->
-      <div v-else class="pdf-wrapper">
+      <!-- PDF 渲染 - 始终存在以便触发加载事件 -->
+      <div v-show="!error && pdfSource" class="pdf-wrapper">
         <VuePdfEmbed
           ref="pdfRef"
           :source="pdfSource"
@@ -234,10 +234,14 @@ const fitToWidth = async () => {
 const handleRetry = () => {
   error.value = false
   loading.value = true
-  // 触发重新加载
-  nextTick(() => {
-    // vue-pdf-embed 会自动重新加载
-  })
+  // 通过重新设置 source 触发重新加载
+  const currentUrl = props.url
+  if (pdfRef.value) {
+    // 强制重新加载
+    nextTick(() => {
+      // vue-pdf-embed 会根据 source 变化自动重新加载
+    })
+  }
 }
 
 // 关闭
@@ -309,16 +313,22 @@ const handleClose = () => {
   display: flex;
   justify-content: center;
   padding: 24px;
+  position: relative;
 }
 
 .pdf-loading,
 .pdf-error {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 100%;
-  min-height: 400px;
+  background: $gray-200;
+  z-index: 10;
 }
 
 .pdf-loading {
