@@ -17,6 +17,7 @@ import com.example.backend.dto.ReportRecordQueryDTO;
 import com.example.backend.entity.ReportRecord;
 import com.example.backend.entity.ReportTemplate;
 import com.example.backend.exception.BusinessException;
+import com.example.backend.mapper.ReportPermissionMapper;
 import com.example.backend.mapper.ReportRecordMapper;
 import com.example.backend.service.PdfConvertService;
 import com.example.backend.service.ReportDatasourceService;
@@ -60,6 +61,9 @@ public class ReportGenerateServiceImpl extends ServiceImpl<ReportRecordMapper, R
     @Autowired
     private PdfConvertService pdfConvertService;
 
+    @Autowired
+    private ReportPermissionMapper reportPermissionMapper;
+
     @Value("${report.storage.path:./upload/reports}")
     private String storagePath;
 
@@ -75,6 +79,13 @@ public class ReportGenerateServiceImpl extends ServiceImpl<ReportRecordMapper, R
         ReportTemplate template = templateService.getById(generateDTO.getTemplateId());
         if (template == null) {
             throw new BusinessException(ResultCode.TEMPLATE_NOT_FOUND);
+        }
+
+        // 权限检查：检查用户是否有生成权限（permissionType >= 2）
+        Long userId = StpUtil.getLoginIdAsLong();
+        int permissionCount = reportPermissionMapper.checkUserPermission(userId, generateDTO.getTemplateId(), 2);
+        if (permissionCount == 0) {
+            throw new BusinessException(ResultCode.FORBIDDEN, "您没有权限生成该报表");
         }
 
         // 创建生成记录
@@ -142,6 +153,13 @@ public class ReportGenerateServiceImpl extends ServiceImpl<ReportRecordMapper, R
         ReportTemplate template = templateService.getById(generateDTO.getTemplateId());
         if (template == null) {
             throw new BusinessException(ResultCode.TEMPLATE_NOT_FOUND);
+        }
+
+        // 权限检查：检查用户是否有生成权限（permissionType >= 2）
+        Long userId = StpUtil.getLoginIdAsLong();
+        int permissionCount = reportPermissionMapper.checkUserPermission(userId, generateDTO.getTemplateId(), 2);
+        if (permissionCount == 0) {
+            throw new BusinessException(ResultCode.FORBIDDEN, "您没有权限生成该报表");
         }
 
         ReportRecord record = new ReportRecord();
@@ -243,6 +261,13 @@ public class ReportGenerateServiceImpl extends ServiceImpl<ReportRecordMapper, R
         ReportRecord record = getById(recordId);
         if (record == null || record.getStatus() != 1) {
             throw new BusinessException("报表不存在或未生成完成");
+        }
+
+        // 权限检查：检查用户是否有下载权限（permissionType >= 3）
+        Long userId = StpUtil.getLoginIdAsLong();
+        int permissionCount = reportPermissionMapper.checkUserPermission(userId, record.getTemplateId(), 3);
+        if (permissionCount == 0) {
+            throw new BusinessException(ResultCode.FORBIDDEN, "您没有权限下载该报表");
         }
 
         File file = new File(storagePath, record.getFilePath());
