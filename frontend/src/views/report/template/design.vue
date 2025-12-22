@@ -1570,11 +1570,36 @@ const generatePreview = async () => {
   previewColumns.value = []
   parsedComponents.value = []
 
+  let data = []
   try {
     // 直接执行SQL查询获取预览数据
     const res = await executeQuery(datasourceId.value, querySql.value)
-    const data = res.data || []
+    data = res.data || []
+  } catch (error) {
+    // 查询失败，尝试回退到简单查询
+    const table = extractTableFromSql(querySql.value)
+    if (table) {
+      const simpleSql = `SELECT * FROM ${table}`
+      try {
+        const res = await executeQuery(datasourceId.value, simpleSql)
+        data = res.data || []
+        if (data.length > 0) {
+          querySql.value = simpleSql
+          ElMessage.warning('原SQL执行失败，已自动切换为简单查询')
+        }
+      } catch (e) {
+        previewLoading.value = false
+        ElMessage.error('预览失败: SQL执行错误')
+        return
+      }
+    } else {
+      previewLoading.value = false
+      ElMessage.error('预览失败: ' + (error.message || '请检查SQL配置'))
+      return
+    }
+  }
 
+  try {
     // 解析设计器中的组件
     if (univerRef.value) {
       const designData = univerRef.value.exportToJson()
