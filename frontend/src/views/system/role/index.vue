@@ -513,12 +513,23 @@ const activeRoleCount = computed(() => roleList.value.filter(r => r.status === 1
 const systemRoleCount = computed(() => roleList.value.filter(r => r.isSystem).length)
 const totalUserCount = computed(() => roleList.value.reduce((sum, r) => sum + (r.userCount || 0), 0))
 
-// 角色分类判断
-const isAdminRole = (roleCode) => roleCode === 'ROLE_ADMIN'
-const isReportManagerRole = (roleCode) => roleCode === 'ROLE_REPORT_MANAGER'
-const isReportUserRole = (roleCode) => roleCode === 'ROLE_REPORT_USER'
+// 角色分类判断（兼容有无 ROLE_ 前缀）
+const isAdminRole = (roleCode) => {
+  return roleCode === 'ROLE_ADMIN' || roleCode === 'ADMIN'
+}
+const isReportManagerRole = (roleCode) => {
+  return roleCode === 'ROLE_REPORT_MANAGER' || roleCode === 'REPORT_MANAGER'
+}
+const isReportUserRole = (roleCode) => {
+  return roleCode === 'ROLE_REPORT_USER' || roleCode === 'REPORT_USER'
+}
 const isDepartmentRole = (roleCode) => {
-  const deptRoles = ['ROLE_FINANCE_MANAGER', 'ROLE_HR_MANAGER', 'ROLE_SALES_MANAGER', 'ROLE_WAREHOUSE_MANAGER']
+  const deptRoles = [
+    'ROLE_FINANCE_MANAGER', 'FINANCE_MANAGER', 'finance_manager',
+    'ROLE_HR_MANAGER', 'HR_MANAGER', 'hr_manager',
+    'ROLE_SALES_MANAGER', 'SALES_MANAGER', 'sales_manager',
+    'ROLE_WAREHOUSE_MANAGER', 'WAREHOUSE_MANAGER', 'warehouse_manager'
+  ]
   return deptRoles.includes(roleCode)
 }
 
@@ -527,6 +538,9 @@ const getPermissionLevel = (role) => {
   if (isAdminRole(role.roleCode)) return 4
   if (isReportManagerRole(role.roleCode)) return 3
   if (isReportUserRole(role.roleCode)) return 2
+  if (isDepartmentRole(role.roleCode)) return 2
+  // 根据是否为系统角色判断
+  if (role.isSystem) return 3
   return 1
 }
 

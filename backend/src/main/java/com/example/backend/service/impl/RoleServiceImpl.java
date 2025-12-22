@@ -145,16 +145,18 @@ public class RoleServiceImpl extends ServiceImpl<RoleMapper, Role> implements Ro
     /**
      * 判断是否为系统核心角色
      * 系统角色包括：
-     * - ROLE_ADMIN: 系统管理员
-     * - ROLE_USER: 普通用户
-     * - ROLE_REPORT_MANAGER: 报表管理员
-     * - ROLE_REPORT_USER: 报表用户
+     * - ROLE_ADMIN / ADMIN: 系统管理员
+     * - ROLE_USER / USER: 普通用户
+     * - ROLE_REPORT_MANAGER / REPORT_MANAGER: 报表管理员
+     * - ROLE_REPORT_USER / REPORT_USER: 报表用户
      */
     private boolean isSystemRole(String roleCode) {
-        return "ROLE_ADMIN".equals(roleCode)
-            || "ROLE_USER".equals(roleCode)
-            || "ROLE_REPORT_MANAGER".equals(roleCode)
-            || "ROLE_REPORT_USER".equals(roleCode);
+        if (roleCode == null) return false;
+        String code = roleCode.toUpperCase();
+        return code.equals("ROLE_ADMIN") || code.equals("ADMIN")
+            || code.equals("ROLE_USER") || code.equals("USER")
+            || code.equals("ROLE_REPORT_MANAGER") || code.equals("REPORT_MANAGER")
+            || code.equals("ROLE_REPORT_USER") || code.equals("REPORT_USER");
     }
 
     @Override
