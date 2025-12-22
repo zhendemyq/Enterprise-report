@@ -967,7 +967,7 @@ const handleExecuteSql = async () => {
     ElMessage.warning('请输入SQL语句')
     return
   }
-  
+
   try {
     const res = await executeQuery(datasourceId.value, querySql.value)
     queryResult.value = res.data || []
@@ -976,9 +976,28 @@ const handleExecuteSql = async () => {
     }
     ElMessage.success('查询成功')
   } catch (error) {
-    queryResult.value = []
-    queryColumns.value = []
-    ElMessage.error('????')
+    // 查询失败，尝试回退到简单查询
+    const table = extractTableFromSql(querySql.value)
+    if (table) {
+      const simpleSql = `SELECT * FROM ${table}`
+      try {
+        const res = await executeQuery(datasourceId.value, simpleSql)
+        queryResult.value = res.data || []
+        if (queryResult.value.length > 0) {
+          queryColumns.value = Object.keys(queryResult.value[0])
+          querySql.value = simpleSql
+          ElMessage.warning('原SQL执行失败，已自动切换为简单查询')
+        }
+      } catch (e) {
+        queryResult.value = []
+        queryColumns.value = []
+        ElMessage.error('SQL执行失败')
+      }
+    } else {
+      queryResult.value = []
+      queryColumns.value = []
+      ElMessage.error('SQL执行失败')
+    }
   }
 }
 
