@@ -610,11 +610,32 @@ const handleTableChange = async (value) => {
   fieldLoading.value = true
   try {
     await loadTableColumns(value)
+    // 自动更新SQL查询语句中的表名
+    updateSqlTableName(value)
   } catch (error) {
     fieldList.value = []
     ElMessage.error('字段加载失败')
   } finally {
     fieldLoading.value = false
+  }
+}
+
+// 更新SQL语句中的表名
+const updateSqlTableName = (newTableName) => {
+  if (!querySql.value.trim()) {
+    // 如果SQL为空，生成默认的SELECT语句
+    querySql.value = `SELECT *\nFROM ${newTableName}`
+    return
+  }
+
+  // 替换SQL中的表名
+  const currentTable = extractTableFromSql(querySql.value)
+  if (currentTable && currentTable !== newTableName) {
+    // 使用正则替换FROM后面的表名
+    querySql.value = querySql.value.replace(
+      /(\bFROM\s+)([`"]?[\w.]+[`"]?)/i,
+      `$1${newTableName}`
+    )
   }
 }
 
