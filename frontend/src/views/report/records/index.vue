@@ -71,6 +71,11 @@
           @change="handleSearch"
         />
 
+        <el-button @click="handleSearch">
+          <el-icon><Search /></el-icon>
+          搜索
+        </el-button>
+
         <el-button @click="handleReset">
           <el-icon><Refresh /></el-icon>
           重置

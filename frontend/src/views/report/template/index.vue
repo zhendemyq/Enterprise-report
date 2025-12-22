@@ -67,6 +67,11 @@
           <el-option label="已下线" :value="2" />
         </el-select>
         
+        <el-button @click="handleSearch">
+          <el-icon><Search /></el-icon>
+          搜索
+        </el-button>
+
         <el-button @click="handleReset">
           <el-icon><Refresh /></el-icon>
           重置

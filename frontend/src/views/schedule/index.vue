@@ -51,6 +51,11 @@
           <el-option label="自定义" :value="4" />
         </el-select>
         
+        <el-button @click="handleSearch">
+          <el-icon><Search /></el-icon>
+          搜索
+        </el-button>
+
         <el-button @click="handleReset">
           <el-icon><Refresh /></el-icon>
           重置

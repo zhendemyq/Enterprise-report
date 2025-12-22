@@ -13,7 +13,43 @@
         </el-button>
       </div>
     </div>
-    
+
+    <!-- 筛选区 -->
+    <div class="filter-card">
+      <div class="filter-form">
+        <el-input
+          v-model="queryParams.keyword"
+          placeholder="搜索分类名称、编码"
+          prefix-icon="Search"
+          clearable
+          class="search-input"
+          @clear="handleSearch"
+          @keyup.enter="handleSearch"
+        />
+
+        <el-select
+          v-model="queryParams.status"
+          placeholder="状态"
+          clearable
+          class="filter-select"
+          @change="handleSearch"
+        >
+          <el-option label="启用" :value="1" />
+          <el-option label="禁用" :value="0" />
+        </el-select>
+
+        <el-button @click="handleSearch">
+          <el-icon><Search /></el-icon>
+          搜索
+        </el-button>
+
+        <el-button @click="handleReset">
+          <el-icon><Refresh /></el-icon>
+          重置
+        </el-button>
+      </div>
+    </div>
+
     <!-- 分类列表 -->
     <div class="category-card">
       <el-table
@@ -161,16 +197,24 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { 
-  getCategoryTree, 
-  createCategory, 
-  updateCategory, 
-  deleteCategory 
+import { Search, Refresh, Plus } from '@element-plus/icons-vue'
+import {
+  getCategoryTree,
+  createCategory,
+  updateCategory,
+  deleteCategory
 } from '@/api/category'
+
+// 查询参数
+const queryParams = reactive({
+  keyword: '',
+  status: null
+})
 
 // 数据
 const loading = ref(false)
 const categoryList = ref([])
+const allCategories = ref([]) // 存储原始数据
 
 // 弹窗
 const dialogVisible = ref(false)
@@ -247,13 +291,50 @@ const loadCategories = async () => {
   loading.value = true
   try {
     const res = await getCategoryTree()
-    categoryList.value = res.data || []
+    allCategories.value = res.data || []
+    handleSearch()
   } catch (error) {
     console.error('加载分类失败:', error)
+    allCategories.value = []
     categoryList.value = []
   } finally {
     loading.value = false
   }
+}
+
+// 搜索 - 递归过滤树形数据
+const filterTree = (tree, keyword, status) => {
+  return tree.filter(node => {
+    const matchKeyword = !keyword ||
+      node.categoryName?.toLowerCase().includes(keyword.toLowerCase()) ||
+      node.categoryCode?.toLowerCase().includes(keyword.toLowerCase())
+    const matchStatus = status === null || status === '' || node.status === status
+
+    if (node.children?.length) {
+      node.children = filterTree(node.children, keyword, status)
+      return matchKeyword && matchStatus || node.children.length > 0
+    }
+    return matchKeyword && matchStatus
+  }).map(node => ({ ...node }))
+}
+
+const handleSearch = () => {
+  if (!queryParams.keyword && (queryParams.status === null || queryParams.status === '')) {
+    categoryList.value = JSON.parse(JSON.stringify(allCategories.value))
+  } else {
+    categoryList.value = filterTree(
+      JSON.parse(JSON.stringify(allCategories.value)),
+      queryParams.keyword,
+      queryParams.status
+    )
+  }
+}
+
+// 重置
+const handleReset = () => {
+  queryParams.keyword = ''
+  queryParams.status = null
+  handleSearch()
 }
 
 // 新建
@@ -374,6 +455,29 @@ const resetForm = () => {
 .page-desc {
   font-size: 14px;
   color: $text-secondary;
+}
+
+// 筛选区
+.filter-card {
+  background: $bg-primary;
+  border-radius: $radius-xl;
+  padding: 20px 24px;
+  margin-bottom: 24px;
+  box-shadow: $shadow-sm;
+}
+
+.filter-form {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.search-input {
+  width: 280px;
+}
+
+.filter-select {
+  width: 140px;
 }
 
 .category-card {

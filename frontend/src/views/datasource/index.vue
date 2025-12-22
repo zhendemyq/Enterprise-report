@@ -13,7 +13,57 @@
         </el-button>
       </div>
     </div>
-    
+
+    <!-- 筛选区 -->
+    <div class="filter-card">
+      <div class="filter-form">
+        <el-input
+          v-model="queryParams.keyword"
+          placeholder="搜索数据源名称、编码"
+          prefix-icon="Search"
+          clearable
+          class="search-input"
+          @clear="handleSearch"
+          @keyup.enter="handleSearch"
+        />
+
+        <el-select
+          v-model="queryParams.datasourceType"
+          placeholder="数据源类型"
+          clearable
+          class="filter-select"
+          @change="handleSearch"
+        >
+          <el-option label="MySQL" :value="1" />
+          <el-option label="PostgreSQL" :value="2" />
+          <el-option label="Oracle" :value="3" />
+          <el-option label="SQL Server" :value="4" />
+          <el-option label="API接口" :value="5" />
+        </el-select>
+
+        <el-select
+          v-model="queryParams.status"
+          placeholder="状态"
+          clearable
+          class="filter-select"
+          @change="handleSearch"
+        >
+          <el-option label="正常" :value="1" />
+          <el-option label="禁用" :value="0" />
+        </el-select>
+
+        <el-button @click="handleSearch">
+          <el-icon><Search /></el-icon>
+          搜索
+        </el-button>
+
+        <el-button @click="handleReset">
+          <el-icon><Refresh /></el-icon>
+          重置
+        </el-button>
+      </div>
+    </div>
+
     <!-- 数据源卡片网格 -->
     <div class="datasource-grid">
       <div
@@ -179,16 +229,25 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { 
-  listDatasources, 
-  createDatasource, 
-  updateDatasource, 
+import { Search, Refresh, Plus, More, Edit, Delete, Connection } from '@element-plus/icons-vue'
+import {
+  listDatasources,
+  createDatasource,
+  updateDatasource,
   deleteDatasource,
-  testConnection 
+  testConnection
 } from '@/api/datasource'
+
+// 查询参数
+const queryParams = reactive({
+  keyword: '',
+  datasourceType: null,
+  status: null
+})
 
 // 数据
 const datasourceList = ref([])
+const allDatasources = ref([]) // 存储原始数据
 
 // 弹窗
 const dialogVisible = ref(false)
@@ -244,11 +303,47 @@ onMounted(() => {
 const loadDatasources = async () => {
   try {
     const res = await listDatasources()
-    datasourceList.value = res.data || []
+    allDatasources.value = res.data || []
+    handleSearch()
   } catch (error) {
     console.error('加载数据源失败:', error)
+    allDatasources.value = []
     datasourceList.value = []
   }
+}
+
+// 搜索
+const handleSearch = () => {
+  let list = [...allDatasources.value]
+
+  // 关键词过滤
+  if (queryParams.keyword) {
+    const keyword = queryParams.keyword.toLowerCase()
+    list = list.filter(ds =>
+      ds.datasourceName?.toLowerCase().includes(keyword) ||
+      ds.datasourceCode?.toLowerCase().includes(keyword)
+    )
+  }
+
+  // 类型过滤
+  if (queryParams.datasourceType !== null && queryParams.datasourceType !== '') {
+    list = list.filter(ds => ds.datasourceType === queryParams.datasourceType)
+  }
+
+  // 状态过滤
+  if (queryParams.status !== null && queryParams.status !== '') {
+    list = list.filter(ds => ds.status === queryParams.status)
+  }
+
+  datasourceList.value = list
+}
+
+// 重置
+const handleReset = () => {
+  queryParams.keyword = ''
+  queryParams.datasourceType = null
+  queryParams.status = null
+  handleSearch()
 }
 
 // 新建
@@ -414,6 +509,29 @@ const getTestResultText = (result) => {
 .page-desc {
   font-size: 14px;
   color: $text-secondary;
+}
+
+// 筛选区
+.filter-card {
+  background: $bg-primary;
+  border-radius: $radius-xl;
+  padding: 20px 24px;
+  margin-bottom: 24px;
+  box-shadow: $shadow-sm;
+}
+
+.filter-form {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.search-input {
+  width: 280px;
+}
+
+.filter-select {
+  width: 140px;
 }
 
 // 数据源卡片网格
