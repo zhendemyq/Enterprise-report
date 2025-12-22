@@ -7,7 +7,7 @@
         <p class="page-desc">查看历史报表生成记录，支持下载和重新生成</p>
       </div>
     </div>
-    
+
     <!-- 筛选区 -->
     <div class="filter-card">
       <div class="filter-form">
@@ -20,7 +20,7 @@
           @clear="handleSearch"
           @keyup.enter="handleSearch"
         />
-        
+
         <el-select
           v-model="queryParams.templateId"
           placeholder="选择模板"
@@ -36,7 +36,7 @@
             :value="item.id"
           />
         </el-select>
-        
+
         <el-select
           v-model="queryParams.status"
           placeholder="状态"
@@ -48,7 +48,7 @@
           <el-option label="成功" :value="1" />
           <el-option label="失败" :value="2" />
         </el-select>
-        
+
         <el-select
           v-model="queryParams.fileType"
           placeholder="文件类型"
@@ -60,7 +60,7 @@
           <el-option label="PDF" value="pdf" />
           <el-option label="CSV" value="csv" />
         </el-select>
-        
+
         <el-date-picker
           v-model="queryParams.dateRange"
           type="daterange"
@@ -70,14 +70,14 @@
           value-format="YYYY-MM-DD"
           @change="handleSearch"
         />
-        
+
         <el-button @click="handleReset">
           <el-icon><Refresh /></el-icon>
           重置
         </el-button>
       </div>
     </div>
-    
+
     <!-- 记录列表 -->
     <div class="records-card">
       <el-table
@@ -99,7 +99,7 @@
             </div>
           </template>
         </el-table-column>
-        
+
         <el-table-column label="文件类型" width="100" align="center">
           <template #default="{ row }">
             <el-tag size="small" :type="getFileTypeTag(row.fileType)">
@@ -107,19 +107,19 @@
             </el-tag>
           </template>
         </el-table-column>
-        
+
         <el-table-column label="文件大小" width="100" align="right">
           <template #default="{ row }">
             {{ formatFileSize(row.fileSize) }}
           </template>
         </el-table-column>
-        
+
         <el-table-column label="数据行数" width="100" align="right">
           <template #default="{ row }">
             {{ row.dataRows?.toLocaleString() || '-' }}
           </template>
         </el-table-column>
-        
+
         <el-table-column label="状态" width="100" align="center">
           <template #default="{ row }">
             <el-tag :type="getStatusType(row.status)" size="small">
@@ -128,14 +128,14 @@
             </el-tag>
           </template>
         </el-table-column>
-        
+
         <el-table-column label="耗时" width="100" align="right">
           <template #default="{ row }">
             <span v-if="row.duration">{{ formatDuration(row.duration) }}</span>
             <span v-else>-</span>
           </template>
         </el-table-column>
-        
+
         <el-table-column label="生成时间" width="170">
           <template #default="{ row }">
             <div class="time-info">
@@ -144,7 +144,7 @@
             </div>
           </template>
         </el-table-column>
-        
+
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
             <div class="table-actions">
@@ -182,7 +182,7 @@
             </div>
           </template>
         </el-table-column>
-        
+
         <!-- 展开详情 -->
         <el-table-column type="expand">
           <template #default="{ row }">
@@ -200,7 +200,7 @@
         </el-table-column>
       </el-table>
     </div>
-    
+
     <!-- 分页 -->
     <div class="pagination-wrapper">
       <div class="pagination-info">
@@ -216,14 +216,52 @@
         @current-change="handleCurrentChange"
       />
     </div>
-    
-    <!-- PDF预览组件 -->
-    <PdfPreview
-      v-model:visible="previewDialogVisible"
-      :url="previewUrl"
+
+    <!-- 预览弹窗 -->
+    <el-dialog
+      v-model="previewDialogVisible"
       :title="previewTitle"
-      @error="handlePreviewError"
-    />
+      width="90%"
+      top="5vh"
+      class="preview-dialog"
+      @close="closePreview"
+    >
+      <div class="preview-content">
+        <div v-if="previewLoading" class="preview-loading">
+          <el-icon class="loading-icon"><Loading /></el-icon>
+          <p>正在加载预览...</p>
+        </div>
+        <!-- PDF预览 -->
+        <div v-else-if="previewType === 'pdf'" class="preview-frame">
+          <iframe v-if="previewUrl" :src="previewUrl" width="100%" height="100%" frameborder="0"></iframe>
+        </div>
+        <!-- Excel/CSV表格预览 -->
+        <div v-else-if="previewData.length > 0" class="preview-table-wrapper">
+          <el-table :data="previewData" border stripe max-height="65vh">
+            <el-table-column
+              v-for="(header, index) in previewHeaders"
+              :key="index"
+              :prop="String(index)"
+              :label="String(header ?? '')"
+              min-width="120"
+            >
+              <template #default="{ row }">{{ row[index] }}</template>
+            </el-table-column>
+          </el-table>
+        </div>
+        <div v-else class="preview-placeholder">
+          <el-icon :size="64"><Document /></el-icon>
+          <h3>暂无数据</h3>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="closePreview">关闭</el-button>
+        <el-button type="primary" @click="handleDownloadFromPreview">
+          <el-icon><Download /></el-icon>
+          下载
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -232,10 +270,10 @@ import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { pageRecords, deleteRecord, downloadReport, previewReport, regenerateReport } from '@/api/report'
 import { listUserTemplates } from '@/api/template'
-import PdfPreview from '@/components/PdfPreview.vue'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import 'dayjs/locale/zh-cn'
+import * as XLSX from 'xlsx'
 
 dayjs.extend(relativeTime)
 dayjs.locale('zh-cn')
@@ -259,8 +297,12 @@ const total = ref(0)
 
 // 预览
 const previewDialogVisible = ref(false)
+const previewLoading = ref(false)
 const previewUrl = ref('')
 const previewTitle = ref('报表预览')
+const previewType = ref('pdf')
+const previewData = ref([])
+const previewHeaders = ref([])
 const currentRecord = ref(null)
 
 // 初始化
@@ -271,7 +313,6 @@ onMounted(() => {
 
 // 清理资源
 onUnmounted(() => {
-  // 释放预览URL资源 (Requirements 3.6)
   if (previewUrl.value) {
     window.URL.revokeObjectURL(previewUrl.value)
   }
@@ -287,7 +328,7 @@ const loadRecords = async () => {
       endDate: queryParams.dateRange?.[1]
     }
     delete params.dateRange
-    
+
     const res = await pageRecords(params)
     recordList.value = res.data?.records || []
     total.value = res.data?.total || 0
@@ -327,44 +368,106 @@ const handleReset = () => {
   handleSearch()
 }
 
-// 预览
+// 预览 - 支持 PDF、Excel、CSV 三种格式
 const handlePreview = async (record) => {
-  // 只支持PDF格式预览
-  if (record.fileType !== 'pdf') {
-    ElMessage.warning('仅支持PDF格式文件预览，其他格式请下载后查看')
-    return
-  }
-  
   currentRecord.value = record
   previewTitle.value = `预览 - ${record.reportName}`
-  
+  previewDialogVisible.value = true
+  previewLoading.value = true
+  previewUrl.value = ''
+  previewData.value = []
+  previewHeaders.value = []
+  previewType.value = record.fileType
+
   try {
     const res = await previewReport(record.id)
-    // 释放之前的URL
-    if (previewUrl.value) {
-      window.URL.revokeObjectURL(previewUrl.value)
+
+    if (record.fileType === 'pdf') {
+      // PDF 预览
+      const blob = new Blob([res.data], { type: 'application/pdf' })
+      previewUrl.value = URL.createObjectURL(blob)
+    } else if (record.fileType === 'xlsx') {
+      // Excel 预览
+      try {
+        let arrayBuffer
+        if (res.data instanceof ArrayBuffer) {
+          arrayBuffer = res.data
+        } else if (res.data instanceof Blob) {
+          arrayBuffer = await res.data.arrayBuffer()
+        } else if (typeof res.data.arrayBuffer === 'function') {
+          arrayBuffer = await res.data.arrayBuffer()
+        } else {
+          const blob = new Blob([res.data])
+          arrayBuffer = await blob.arrayBuffer()
+        }
+
+        const workbook = XLSX.read(new Uint8Array(arrayBuffer), { type: 'array' })
+        const sheetName = workbook.SheetNames[0]
+        const worksheet = workbook.Sheets[sheetName]
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 })
+        if (jsonData.length > 0) {
+          previewHeaders.value = jsonData[0].map(h => String(h ?? ''))
+          previewData.value = jsonData.slice(1)
+        }
+      } catch (xlsxError) {
+        console.error('Excel解析错误:', xlsxError)
+        ElMessage.warning('Excel文件解析失败，请尝试下载后查看')
+      }
+    } else if (record.fileType === 'csv') {
+      // CSV 预览
+      try {
+        let text
+        if (typeof res.data === 'string') {
+          text = res.data
+        } else if (res.data instanceof Blob) {
+          text = await res.data.text()
+        } else if (typeof res.data.text === 'function') {
+          text = await res.data.text()
+        } else {
+          const blob = new Blob([res.data])
+          text = await blob.text()
+        }
+        const lines = text.split('\n').filter(line => line.trim())
+        if (lines.length > 0) {
+          previewHeaders.value = lines[0].split(',').map(h => String(h ?? '').trim())
+          previewData.value = lines.slice(1).map(line => line.split(',').map(c => c.trim()))
+        }
+      } catch (csvError) {
+        console.error('CSV解析错误:', csvError)
+        ElMessage.warning('CSV文件解析失败，请尝试下载后查看')
+      }
     }
-    // 创建预览URL
-    const blob = new Blob([res.data], { type: 'application/pdf' })
-    previewUrl.value = window.URL.createObjectURL(blob)
-    previewDialogVisible.value = true
   } catch (error) {
+    console.error('预览失败:', error)
     ElMessage.error('加载预览失败，请稍后重试')
-    previewUrl.value = ''
+  } finally {
+    previewLoading.value = false
   }
 }
 
-// 预览错误处理
-const handlePreviewError = (error) => {
-  console.error('PDF预览错误:', error)
-  ElMessage.error('PDF加载失败，请检查文件是否有效')
+// 关闭预览
+const closePreview = () => {
+  if (previewUrl.value) {
+    URL.revokeObjectURL(previewUrl.value)
+    previewUrl.value = ''
+  }
+  previewDialogVisible.value = false
+  previewData.value = []
+  previewHeaders.value = []
+}
+
+// 从预览下载
+const handleDownloadFromPreview = () => {
+  if (currentRecord.value) {
+    handleDownload(currentRecord.value)
+  }
 }
 
 // 下载
 const handleDownload = async (record) => {
   try {
     const res = await downloadReport(record.id)
-    
+
     // 创建下载链接
     const blob = new Blob([res.data], { type: res.headers?.['content-type'] || 'application/octet-stream' })
     const url = window.URL.createObjectURL(blob)
@@ -373,7 +476,7 @@ const handleDownload = async (record) => {
     a.download = `${record.reportName}.${record.fileType}`
     a.click()
     window.URL.revokeObjectURL(url)
-    
+
     ElMessage.success('下载成功')
   } catch (error) {
     ElMessage.info('下载功能需要后端支持')
@@ -388,7 +491,7 @@ const handleRegenerate = async (record) => {
       '提示',
       { type: 'warning' }
     )
-    
+
     await regenerateReport(record.id)
     ElMessage.success('已提交重新生成任务')
     loadRecords()
@@ -405,7 +508,7 @@ const handleDelete = async (record) => {
       '警告',
       { type: 'error', confirmButtonText: '删除', confirmButtonClass: 'el-button--danger' }
     )
-    
+
     await deleteRecord(record.id)
     ElMessage.success('删除成功')
     loadRecords()
@@ -542,17 +645,17 @@ const formatParams = (params) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  
+
   &.xlsx {
     background: rgba($success-color, 0.1);
     color: $success-color;
   }
-  
+
   &.pdf {
     background: rgba($danger-color, 0.1);
     color: $danger-color;
   }
-  
+
   &.csv {
     background: rgba($info-color, 0.1);
     color: $info-color;
@@ -612,11 +715,11 @@ const formatParams = (params) => {
 
 .expand-section {
   margin-bottom: 16px;
-  
+
   &:last-child {
     margin-bottom: 0;
   }
-  
+
   h4 {
     font-size: 13px;
     font-weight: $font-weight-semibold;
@@ -663,4 +766,64 @@ const formatParams = (params) => {
   color: $text-secondary;
 }
 
+// 预览弹窗
+.preview-dialog {
+  :deep(.el-dialog__body) {
+    padding: 0;
+    height: 70vh;
+  }
+}
+
+.preview-content {
+  height: 100%;
+}
+
+.preview-loading {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  .loading-icon {
+    font-size: 48px;
+    color: $primary-color;
+    animation: rotate 1s linear infinite;
+    margin-bottom: 16px;
+  }
+
+  p {
+    color: $text-secondary;
+  }
+}
+
+.preview-frame {
+  height: 100%;
+}
+
+.preview-table-wrapper {
+  height: 100%;
+  padding: 16px;
+  overflow: auto;
+}
+
+.preview-placeholder {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  .el-icon {
+    color: $text-tertiary;
+    margin-bottom: 16px;
+  }
+
+  h3 {
+    font-size: 20px;
+    font-weight: $font-weight-semibold;
+    color: $text-primary;
+    margin-bottom: 8px;
+  }
+}
 </style>
