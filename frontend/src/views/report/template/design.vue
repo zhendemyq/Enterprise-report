@@ -40,10 +40,6 @@
       </div>
       
       <div class="header-right">
-        <el-button @click="handlePreview">
-          <el-icon><View /></el-icon>
-          预览
-        </el-button>
         <el-button type="primary" :loading="saveLoading" @click="handleSave">
           <el-icon><Check /></el-icon>
           保存
