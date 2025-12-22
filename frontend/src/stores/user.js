@@ -46,6 +46,10 @@ export const useUserStore = defineStore('user', {
       try {
         const res = await getUserInfo()
         this.userInfo = res.data
+        // 从用户信息中提取角色编码
+        if (res.data.roles && res.data.roles.length > 0) {
+          this.roles = res.data.roles.map(role => role.roleCode)
+        }
         return res
       } catch (error) {
         this.logout()

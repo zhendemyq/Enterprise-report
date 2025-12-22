@@ -88,7 +88,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (user == null) {
             throw new BusinessException(ResultCode.USER_NOT_EXIST);
         }
-        return BeanUtil.copyProperties(user, UserVO.class);
+        UserVO userVO = BeanUtil.copyProperties(user, UserVO.class);
+        // 查询用户角色
+        userVO.setRoles(baseMapper.selectRolesByUserId(userId));
+        return userVO;
     }
 
     @Override

@@ -170,10 +170,44 @@ const userStore = useUserStore()
 const searchKeyword = ref('')
 const cachedViews = ref([])
 
-// 获取菜单路由
+/**
+ * 检查用户是否有权限访问路由
+ */
+const hasPermission = (route) => {
+  const userRoles = userStore.roles || []
+  if (!route.meta?.roles) {
+    return true
+  }
+  return userRoles.some(role => route.meta.roles.includes(role))
+}
+
+/**
+ * 递归过滤路由，根据用户角色
+ */
+const filterRoutes = (routes) => {
+  const result = []
+  routes.forEach(route => {
+    if (hasPermission(route)) {
+      const tmp = { ...route }
+      if (tmp.children) {
+        tmp.children = filterRoutes(tmp.children)
+        // 如果子路由全部被过滤掉，则不显示父菜单
+        if (tmp.children.length === 0 && route.children?.length > 0) {
+          return
+        }
+      }
+      result.push(tmp)
+    }
+  })
+  return result
+}
+
+// 获取菜单路由（根据用户角色过滤）
 const menuRoutes = computed(() => {
   const routes = router.options.routes
-  return routes.filter(r => !r.meta?.hidden && r.path !== '/login' && r.path !== '/:pathMatch(.*)*')
+  const filteredRoutes = routes.filter(r => !r.meta?.hidden && r.path !== '/login' && r.path !== '/:pathMatch(.*)*')
+  // 根据用户角色过滤路由
+  return filterRoutes(filteredRoutes)
 })
 
 // 当前激活菜单
