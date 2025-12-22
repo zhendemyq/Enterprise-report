@@ -5,11 +5,33 @@ import { useUserStore } from '@/stores/user'
 
 /**
  * 角色权限说明：
- * - ROLE_ADMIN: 系统管理员，拥有所有权限
- * - ROLE_REPORT_MANAGER: 报表设计师，管理模板、数据源、分类
- * - ROLE_REPORT_USER: 业务用户，生成报表、查看记录、定时任务
- * - 其他角色: 仅首页和基础功能
+ * - ADMIN: 系统管理员，拥有所有权限
+ * - REPORT_MANAGER: 报表设计师，管理模板、数据源、分类
+ * - REPORT_USER: 业务用户，生成报表、查看记录、定时任务
+ * - 部门主管角色（finance_manager, hr_manager, sales_manager, warehouse_manager, dept_manager）：业务用户权限
+ * - report_viewer: 报表查看员，只能查看报表
+ * - data_analyst: 数据分析师，业务用户权限
  */
+
+// 业务用户角色列表（可以生成报表、查看记录、设置定时任务）
+const BUSINESS_USER_ROLES = [
+  'ADMIN',
+  'REPORT_MANAGER',
+  'REPORT_USER',
+  'dept_manager',
+  'finance_manager',
+  'hr_manager',
+  'sales_manager',
+  'warehouse_manager',
+  'data_analyst',
+  'report_viewer'
+]
+
+// 报表设计师角色列表（可以管理模板、数据源、分类）
+const DESIGNER_ROLES = ['ADMIN', 'REPORT_MANAGER']
+
+// 管理员角色列表
+const ADMIN_ROLES = ['ADMIN']
 
 // 路由配置
 const routes = [
@@ -40,8 +62,8 @@ const routes = [
     meta: {
       title: '报表管理',
       icon: 'Document',
-      // 报表管理模块：管理员、报表设计师、业务用户都可见
-      roles: ['ROLE_ADMIN', 'ROLE_REPORT_MANAGER', 'ROLE_REPORT_USER']
+      // 报表管理模块：所有业务用户都可见
+      roles: BUSINESS_USER_ROLES
     },
     children: [
       {
@@ -52,7 +74,7 @@ const routes = [
           title: '模板管理',
           icon: 'Files',
           // 模板管理：仅管理员和报表设计师
-          roles: ['ROLE_ADMIN', 'ROLE_REPORT_MANAGER']
+          roles: DESIGNER_ROLES
         }
       },
       {
@@ -63,7 +85,7 @@ const routes = [
           title: '模板设计',
           hidden: true,
           // 模板设计：仅管理员和报表设计师
-          roles: ['ROLE_ADMIN', 'ROLE_REPORT_MANAGER']
+          roles: DESIGNER_ROLES
         }
       },
       {
@@ -73,8 +95,8 @@ const routes = [
         meta: {
           title: '报表生成',
           icon: 'Printer',
-          // 报表生成：管理员、报表设计师、业务用户
-          roles: ['ROLE_ADMIN', 'ROLE_REPORT_MANAGER', 'ROLE_REPORT_USER']
+          // 报表生成：所有业务用户
+          roles: BUSINESS_USER_ROLES
         }
       },
       {
@@ -84,8 +106,8 @@ const routes = [
         meta: {
           title: '生成记录',
           icon: 'List',
-          // 生成记录：管理员、报表设计师、业务用户
-          roles: ['ROLE_ADMIN', 'ROLE_REPORT_MANAGER', 'ROLE_REPORT_USER']
+          // 生成记录：所有业务用户
+          roles: BUSINESS_USER_ROLES
         }
       },
       {
@@ -96,7 +118,7 @@ const routes = [
           title: '分类管理',
           icon: 'Folder',
           // 分类管理：仅管理员和报表设计师
-          roles: ['ROLE_ADMIN', 'ROLE_REPORT_MANAGER']
+          roles: DESIGNER_ROLES
         }
       }
     ]
@@ -109,7 +131,7 @@ const routes = [
       title: '数据源',
       icon: 'Connection',
       // 数据源管理：仅管理员和报表设计师
-      roles: ['ROLE_ADMIN', 'ROLE_REPORT_MANAGER']
+      roles: DESIGNER_ROLES
     },
     children: [
       {
@@ -119,7 +141,7 @@ const routes = [
         meta: {
           title: '数据源管理',
           icon: 'Coin',
-          roles: ['ROLE_ADMIN', 'ROLE_REPORT_MANAGER']
+          roles: DESIGNER_ROLES
         }
       }
     ]
@@ -131,8 +153,8 @@ const routes = [
     meta: {
       title: '定时任务',
       icon: 'Timer',
-      // 定时任务：管理员、报表设计师、业务用户
-      roles: ['ROLE_ADMIN', 'ROLE_REPORT_MANAGER', 'ROLE_REPORT_USER']
+      // 定时任务：所有业务用户
+      roles: BUSINESS_USER_ROLES
     },
     children: [
       {
@@ -142,7 +164,7 @@ const routes = [
         meta: {
           title: '任务管理',
           icon: 'Clock',
-          roles: ['ROLE_ADMIN', 'ROLE_REPORT_MANAGER', 'ROLE_REPORT_USER']
+          roles: BUSINESS_USER_ROLES
         }
       }
     ]
@@ -155,7 +177,7 @@ const routes = [
       title: '系统管理',
       icon: 'Setting',
       // 系统管理：仅管理员
-      roles: ['ROLE_ADMIN']
+      roles: ADMIN_ROLES
     },
     children: [
       {
@@ -165,7 +187,7 @@ const routes = [
         meta: {
           title: '用户管理',
           icon: 'User',
-          roles: ['ROLE_ADMIN']
+          roles: ADMIN_ROLES
         }
       },
       {
@@ -175,7 +197,7 @@ const routes = [
         meta: {
           title: '角色管理',
           icon: 'UserFilled',
-          roles: ['ROLE_ADMIN']
+          roles: ADMIN_ROLES
         }
       }
     ]
