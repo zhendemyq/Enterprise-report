@@ -71,7 +71,7 @@
         row-key="id"
         style="width: 100%"
       >
-        <el-table-column label="任务信息" min-width="280">
+        <el-table-column label="任务信息" min-width="200">
           <template #default="{ row }">
             <div class="task-info">
               <div class="task-icon" :class="{ active: row.status === 1 }">
@@ -84,54 +84,53 @@
             </div>
           </template>
         </el-table-column>
-        
-        <el-table-column label="调度类型" width="100">
+
+        <el-table-column label="调度类型" width="90">
           <template #default="{ row }">
             <el-tag :type="getScheduleTypeTag(row.scheduleType)" size="small">
               {{ getScheduleTypeText(row.scheduleType) }}
             </el-tag>
           </template>
         </el-table-column>
-        
-        <el-table-column label="Cron表达式" width="150">
+
+        <el-table-column label="Cron表达式" width="130">
           <template #default="{ row }">
             <code class="cron-code">{{ row.cronExpression }}</code>
           </template>
         </el-table-column>
-        
-        <el-table-column label="邮件通知" width="100" align="center">
+
+        <el-table-column label="邮件" width="60" align="center">
           <template #default="{ row }">
             <el-icon v-if="row.sendEmail" class="email-icon active"><Message /></el-icon>
             <el-icon v-else class="email-icon"><Message /></el-icon>
           </template>
         </el-table-column>
-        
-        <el-table-column label="上次执行" width="150">
+
+        <el-table-column label="上次执行" width="140">
           <template #default="{ row }">
             <span v-if="row.lastExecuteTime">{{ formatDate(row.lastExecuteTime) }}</span>
             <span v-else class="text-secondary">-</span>
           </template>
         </el-table-column>
 
-        <el-table-column label="下次执行" width="150">
+        <el-table-column label="下次执行" width="140">
           <template #default="{ row }">
             <span v-if="row.nextExecuteTime">{{ formatDate(row.nextExecuteTime) }}</span>
             <span v-else class="text-secondary">-</span>
           </template>
         </el-table-column>
 
-        <el-table-column label="执行统计" width="100">
+        <el-table-column label="统计" width="80">
           <template #default="{ row }">
             <div class="exec-stats">
               <span class="success">{{ row.executeCount - row.failCount }}</span>
               <span class="divider">/</span>
               <span class="fail">{{ row.failCount }}</span>
-              <span class="text-secondary">次</span>
             </div>
           </template>
         </el-table-column>
-        
-        <el-table-column label="状态" width="80" align="center">
+
+        <el-table-column label="状态" width="70" align="center">
           <template #default="{ row }">
             <el-switch
               v-model="row.status"
@@ -141,8 +140,8 @@
             />
           </template>
         </el-table-column>
-        
-        <el-table-column label="操作" width="230" fixed="right">
+
+        <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
             <div class="table-actions">
               <el-button text type="primary" @click="handleExecute(row)">
