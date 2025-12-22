@@ -5,9 +5,9 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.backend.entity.SysNotification;
-import com.example.backend.entity.SysUser;
+import com.example.backend.entity.User;
 import com.example.backend.mapper.SysNotificationMapper;
-import com.example.backend.mapper.SysUserMapper;
+import com.example.backend.mapper.UserMapper;
 import com.example.backend.service.NotificationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -24,7 +24,7 @@ public class NotificationServiceImpl implements NotificationService {
     private SysNotificationMapper notificationMapper;
 
     @Autowired
-    private SysUserMapper userMapper;
+    private UserMapper userMapper;
 
     @Override
     public void send(Long userId, String title, String content, Integer type, Long bizId, String bizType) {
@@ -42,8 +42,8 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     public void sendToAll(String title, String content, Integer type) {
         // 获取所有用户
-        List<SysUser> users = userMapper.selectList(null);
-        for (SysUser user : users) {
+        List<User> users = userMapper.selectList(null);
+        for (User user : users) {
             send(user.getId(), title, content, type, null, null);
         }
     }
