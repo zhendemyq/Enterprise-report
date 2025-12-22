@@ -137,7 +137,7 @@
                 <span class="template-category">{{ template.categoryName }}</span>
               </div>
               <div class="template-count">
-                <span>{{ template.usageCount || 0 }}</span>
+                <span>{{ template.useCount || 0 }}</span>
                 <span class="count-label">次使用</span>
               </div>
             </div>
