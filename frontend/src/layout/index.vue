@@ -168,7 +168,7 @@ const appStore = useAppStore()
 const userStore = useUserStore()
 
 const searchKeyword = ref('')
-const cachedViews = ref([])
+const cachedViews = ref(['Dashboard'])
 
 /**
  * 检查用户是否有权限访问路由

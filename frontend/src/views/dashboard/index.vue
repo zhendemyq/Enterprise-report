@@ -149,7 +149,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onActivated, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import VChart from 'vue-echarts'
@@ -159,6 +159,11 @@ import { LineChart, BarChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent, LegendComponent } from 'echarts/components'
 import dayjs from 'dayjs'
 import { getStats, getRecentReports, getPopularTemplates, getReportTrend } from '@/api/dashboard'
+
+// 定义组件名称，用于 keep-alive 缓存
+defineOptions({
+  name: 'Dashboard'
+})
 
 use([CanvasRenderer, LineChart, BarChart, GridComponent, TooltipComponent, LegendComponent])
 
@@ -369,12 +374,22 @@ const loadTrendData = async () => {
   }
 }
 
-// 初始化
-onMounted(() => {
+// 刷新所有数据
+const refreshAllData = () => {
   loadStats()
   loadRecentReports()
   loadPopularTemplates()
   loadTrendData()
+}
+
+// 初始化
+onMounted(() => {
+  refreshAllData()
+})
+
+// 页面激活时刷新数据（从其他页面返回时）
+onActivated(() => {
+  refreshAllData()
 })
 
 // 格式化时间
