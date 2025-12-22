@@ -313,13 +313,13 @@
     <el-dialog
       v-model="permDialogVisible"
       title="权限配置"
-      width="700px"
+      width="800px"
       class="perm-dialog"
       destroy-on-close
     >
       <div class="perm-header">
         <div class="perm-role-info">
-          <div class="role-icon-small" :style="{ background: currentRole?.color }">
+          <div class="role-icon-small" :style="{ background: currentRole?.color || '#007AFF' }">
             <el-icon><User /></el-icon>
           </div>
           <div class="role-info-text">
@@ -330,28 +330,55 @@
         <div class="perm-stats">
           <span class="stat-item">
             <el-icon><Document /></el-icon>
-            已选 <strong>{{ selectedCount }}</strong> 个模板
+            已选 <strong>{{ selectedTemplateCount }}</strong> 个模板
           </span>
         </div>
       </div>
 
-      <!-- 权限类型说明 -->
-      <div class="perm-types-info">
-        <div class="perm-type-item">
-          <el-icon class="type-icon view"><View /></el-icon>
-          <span>查看</span>
-        </div>
-        <div class="perm-type-item">
-          <el-icon class="type-icon generate"><DocumentAdd /></el-icon>
-          <span>生成</span>
-        </div>
-        <div class="perm-type-item">
-          <el-icon class="type-icon download"><Download /></el-icon>
-          <span>下载</span>
-        </div>
-        <div class="perm-type-item">
-          <el-icon class="type-icon edit"><Edit /></el-icon>
-          <span>编辑</span>
+      <!-- 权限类型说明 - 可点击批量设置 -->
+      <div class="perm-types-header">
+        <div class="perm-types-label">权限类型</div>
+        <div class="perm-types-actions">
+          <el-tooltip content="为所有已选模板添加查看权限" placement="top">
+            <div
+              class="perm-type-btn"
+              :class="{ active: isAllPermEnabled('view') }"
+              @click="toggleAllPerm('view')"
+            >
+              <el-icon class="type-icon view"><View /></el-icon>
+              <span>查看</span>
+            </div>
+          </el-tooltip>
+          <el-tooltip content="为所有已选模板添加生成权限" placement="top">
+            <div
+              class="perm-type-btn"
+              :class="{ active: isAllPermEnabled('generate') }"
+              @click="toggleAllPerm('generate')"
+            >
+              <el-icon class="type-icon generate"><DocumentAdd /></el-icon>
+              <span>生成</span>
+            </div>
+          </el-tooltip>
+          <el-tooltip content="为所有已选模板添加下载权限" placement="top">
+            <div
+              class="perm-type-btn"
+              :class="{ active: isAllPermEnabled('download') }"
+              @click="toggleAllPerm('download')"
+            >
+              <el-icon class="type-icon download"><Download /></el-icon>
+              <span>下载</span>
+            </div>
+          </el-tooltip>
+          <el-tooltip content="为所有已选模板添加编辑权限" placement="top">
+            <div
+              class="perm-type-btn"
+              :class="{ active: isAllPermEnabled('edit') }"
+              @click="toggleAllPerm('edit')"
+            >
+              <el-icon class="type-icon edit"><Edit /></el-icon>
+              <span>编辑</span>
+            </div>
+          </el-tooltip>
         </div>
       </div>
 
@@ -364,10 +391,17 @@
           class="perm-search"
         />
         <div class="perm-actions">
-          <el-button size="small" @click="handleSelectAll">全选</el-button>
-          <el-button size="small" @click="handleSelectNone">清空</el-button>
+          <el-button size="small" @click="handleSelectAllWithPerms">
+            <el-icon><CircleCheck /></el-icon>
+            全选
+          </el-button>
+          <el-button size="small" @click="handleSelectNone">
+            <el-icon><Remove /></el-icon>
+            清空
+          </el-button>
           <el-button size="small" @click="handleExpandAll">
-            {{ isAllExpanded ? '收起全部' : '展开全部' }}
+            <el-icon><component :is="isAllExpanded ? 'ArrowUp' : 'ArrowDown'" /></el-icon>
+            {{ isAllExpanded ? '收起' : '展开' }}
           </el-button>
         </div>
       </div>
@@ -386,7 +420,7 @@
           @check="handleTreeCheck"
         >
           <template #default="{ node, data }">
-            <span class="tree-node">
+            <div class="tree-node" :class="{ 'is-template': data.type === 'template' }">
               <el-icon v-if="data.type === 'category'" class="node-icon category">
                 <Folder />
               </el-icon>
@@ -394,13 +428,46 @@
                 <Document />
               </el-icon>
               <span class="node-label">{{ node.label }}</span>
-              <div v-if="data.type === 'template'" class="node-perms">
-                <el-tooltip content="查看"><el-icon><View /></el-icon></el-tooltip>
-                <el-tooltip content="生成"><el-icon><DocumentAdd /></el-icon></el-tooltip>
-                <el-tooltip content="下载"><el-icon><Download /></el-icon></el-tooltip>
-                <el-tooltip content="编辑"><el-icon><Edit /></el-icon></el-tooltip>
+              <!-- 模板权限控制按钮 -->
+              <div v-if="data.type === 'template'" class="node-perms" @click.stop>
+                <el-tooltip content="查看权限" placement="top">
+                  <div
+                    class="perm-icon-btn"
+                    :class="{ active: getTemplatePerm(data.id, 'view'), disabled: !isTemplateChecked(data.id) }"
+                    @click="toggleTemplatePerm(data.id, 'view')"
+                  >
+                    <el-icon><View /></el-icon>
+                  </div>
+                </el-tooltip>
+                <el-tooltip content="生成权限" placement="top">
+                  <div
+                    class="perm-icon-btn"
+                    :class="{ active: getTemplatePerm(data.id, 'generate'), disabled: !isTemplateChecked(data.id) }"
+                    @click="toggleTemplatePerm(data.id, 'generate')"
+                  >
+                    <el-icon><DocumentAdd /></el-icon>
+                  </div>
+                </el-tooltip>
+                <el-tooltip content="下载权限" placement="top">
+                  <div
+                    class="perm-icon-btn"
+                    :class="{ active: getTemplatePerm(data.id, 'download'), disabled: !isTemplateChecked(data.id) }"
+                    @click="toggleTemplatePerm(data.id, 'download')"
+                  >
+                    <el-icon><Download /></el-icon>
+                  </div>
+                </el-tooltip>
+                <el-tooltip content="编辑权限" placement="top">
+                  <div
+                    class="perm-icon-btn"
+                    :class="{ active: getTemplatePerm(data.id, 'edit'), disabled: !isTemplateChecked(data.id) }"
+                    @click="toggleTemplatePerm(data.id, 'edit')"
+                  >
+                    <el-icon><Edit /></el-icon>
+                  </div>
+                </el-tooltip>
               </div>
-            </span>
+            </div>
           </template>
         </el-tree>
 
@@ -409,9 +476,35 @@
         </div>
       </div>
 
+      <!-- 已选权限摘要 -->
+      <div class="perm-summary" v-if="selectedTemplateCount > 0">
+        <div class="summary-title">
+          <el-icon><PieChart /></el-icon>
+          权限摘要
+        </div>
+        <div class="summary-stats">
+          <div class="summary-item">
+            <span class="summary-count view">{{ getPermTypeCount('view') }}</span>
+            <span class="summary-label">可查看</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-count generate">{{ getPermTypeCount('generate') }}</span>
+            <span class="summary-label">可生成</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-count download">{{ getPermTypeCount('download') }}</span>
+            <span class="summary-label">可下载</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-count edit">{{ getPermTypeCount('edit') }}</span>
+            <span class="summary-label">可编辑</span>
+          </div>
+        </div>
+      </div>
+
       <div class="perm-tip">
         <el-icon><InfoFilled /></el-icon>
-        <span>勾选模板后，该角色下的用户将拥有对应模板的查看、生成、下载、编辑权限。系统管理员和报表管理员自动拥有所有权限，无需配置。</span>
+        <span>点击模板右侧的权限图标可单独控制每种权限。系统管理员和报表管理员自动拥有所有权限，无需配置。</span>
       </div>
 
       <template #footer>
@@ -488,7 +581,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   User, More, Edit, Key, Delete, Plus, Folder, Document, InfoFilled,
   Check, Lock, UserFilled, Medal, OfficeBuilding, StarFilled, CopyDocument,
-  View, DocumentAdd, Download
+  View, DocumentAdd, Download, CircleCheck, Remove, ArrowUp, ArrowDown, PieChart
 } from '@element-plus/icons-vue'
 import {
   listRoles,
@@ -663,18 +756,78 @@ const permSearchKeyword = ref('')
 const expandedKeys = ref([])
 const isAllExpanded = ref(true)
 
+// 细粒度权限数据: { templateId: { view: true, generate: true, download: true, edit: true } }
+const templatePermissions = ref({})
+
 // 过滤节点方法
 const filterNode = (value, data) => {
   if (!value) return true
   return data.label.toLowerCase().includes(value.toLowerCase())
 }
 
-// 已选数量
-const selectedCount = computed(() => {
-  if (!permTreeRef.value) return checkedPermissions.value.filter(id => id > 0).length
+// 已选模板数量
+const selectedTemplateCount = computed(() => {
+  if (!permTreeRef.value) return Object.keys(templatePermissions.value).length
   const checked = permTreeRef.value.getCheckedKeys()
   return checked.filter(id => id > 0).length
 })
+
+// 检查模板是否被勾选
+const isTemplateChecked = (templateId) => {
+  if (!permTreeRef.value) return false
+  const checked = permTreeRef.value.getCheckedKeys()
+  return checked.includes(templateId)
+}
+
+// 获取模板权限状态
+const getTemplatePerm = (templateId, permType) => {
+  if (!templatePermissions.value[templateId]) return false
+  return templatePermissions.value[templateId][permType] || false
+}
+
+// 切换模板单个权限
+const toggleTemplatePerm = (templateId, permType) => {
+  if (!isTemplateChecked(templateId)) {
+    ElMessage.warning('请先勾选该模板')
+    return
+  }
+
+  if (!templatePermissions.value[templateId]) {
+    templatePermissions.value[templateId] = { view: true, generate: true, download: true, edit: true }
+  }
+
+  templatePermissions.value[templateId][permType] = !templatePermissions.value[templateId][permType]
+}
+
+// 检查所有已选模板是否都有某种权限
+const isAllPermEnabled = (permType) => {
+  const checkedIds = permTreeRef.value?.getCheckedKeys()?.filter(id => id > 0) || []
+  if (checkedIds.length === 0) return false
+  return checkedIds.every(id => templatePermissions.value[id]?.[permType])
+}
+
+// 批量切换所有已选模板的某种权限
+const toggleAllPerm = (permType) => {
+  const checkedIds = permTreeRef.value?.getCheckedKeys()?.filter(id => id > 0) || []
+  if (checkedIds.length === 0) {
+    ElMessage.warning('请先选择模板')
+    return
+  }
+
+  const allEnabled = isAllPermEnabled(permType)
+  checkedIds.forEach(id => {
+    if (!templatePermissions.value[id]) {
+      templatePermissions.value[id] = { view: true, generate: true, download: true, edit: true }
+    }
+    templatePermissions.value[id][permType] = !allEnabled
+  })
+}
+
+// 获取某种权限类型的数量
+const getPermTypeCount = (permType) => {
+  const checkedIds = permTreeRef.value?.getCheckedKeys()?.filter(id => id > 0) || []
+  return checkedIds.filter(id => templatePermissions.value[id]?.[permType]).length
+}
 
 // 用户列表弹窗
 const userDialogVisible = ref(false)
@@ -825,10 +978,17 @@ const handlePermission = async (role) => {
 
   currentRole.value = role
   permSearchKeyword.value = ''
+  templatePermissions.value = {}
 
   try {
     const res = await getRolePermissions(role.id)
     checkedPermissions.value = res.data || []
+
+    // 初始化细粒度权限（默认所有权限都开启）
+    checkedPermissions.value.forEach(id => {
+      templatePermissions.value[id] = { view: true, generate: true, download: true, edit: true }
+    })
+
     permDialogVisible.value = true
 
     await nextTick()
@@ -838,20 +998,40 @@ const handlePermission = async (role) => {
   } catch (error) {
     console.error('加载角色权限失败:', error)
     checkedPermissions.value = []
+    templatePermissions.value = {}
     permDialogVisible.value = true
   }
 }
 
-// 树节点选中事件
-const handleTreeCheck = () => {
-  // 触发重新计算已选数量
+// 树节点选中事件 - 同步细粒度权限
+const handleTreeCheck = (node, { checkedKeys }) => {
+  const templateIds = checkedKeys.filter(id => id > 0)
+
+  // 为新选中的模板添加默认权限
+  templateIds.forEach(id => {
+    if (!templatePermissions.value[id]) {
+      templatePermissions.value[id] = { view: true, generate: true, download: true, edit: true }
+    }
+  })
+
+  // 移除取消选中的模板权限
+  Object.keys(templatePermissions.value).forEach(id => {
+    if (!templateIds.includes(Number(id))) {
+      delete templatePermissions.value[id]
+    }
+  })
 }
 
-// 全选
-const handleSelectAll = () => {
+// 全选（带权限）
+const handleSelectAllWithPerms = () => {
   if (permTreeRef.value) {
     const allTemplateIds = getAllTemplateIds(permissionTree.value)
     permTreeRef.value.setCheckedKeys(allTemplateIds)
+
+    // 为所有模板设置完整权限
+    allTemplateIds.forEach(id => {
+      templatePermissions.value[id] = { view: true, generate: true, download: true, edit: true }
+    })
   }
 }
 
@@ -873,6 +1053,7 @@ const getAllTemplateIds = (nodes) => {
 const handleSelectNone = () => {
   if (permTreeRef.value) {
     permTreeRef.value.setCheckedKeys([])
+    templatePermissions.value = {}
   }
 }
 
@@ -1405,27 +1586,64 @@ watch(permSearchKeyword, (val) => {
   }
 }
 
-// 权限类型说明
-.perm-types-info {
+// 权限类型头部 - 可交互
+.perm-types-header {
   display: flex;
-  justify-content: center;
-  gap: 24px;
-  padding: 12px;
-  background: rgba($primary-color, 0.05);
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: rgba($primary-color, 0.03);
+  border: 1px solid rgba($primary-color, 0.1);
   border-radius: $radius-md;
   margin-bottom: 16px;
 }
 
-.perm-type-item {
+.perm-types-label {
+  font-size: 13px;
+  color: $text-secondary;
+  font-weight: $font-weight-medium;
+}
+
+.perm-types-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.perm-type-btn {
   display: flex;
   align-items: center;
   gap: 6px;
+  padding: 6px 12px;
+  border-radius: $radius-md;
+  cursor: pointer;
   font-size: 13px;
   color: $text-secondary;
+  background: $bg-primary;
+  border: 1px solid $border-color;
+  transition: all $transition-fast;
+
+  &:hover {
+    border-color: $primary-color;
+    color: $primary-color;
+  }
+
+  &.active {
+    background: rgba($primary-color, 0.1);
+    border-color: $primary-color;
+    color: $primary-color;
+
+    .type-icon {
+      &.view { color: $info-color; }
+      &.generate { color: $success-color; }
+      &.download { color: $warning-color; }
+      &.edit { color: $primary-color; }
+    }
+  }
 }
 
 .type-icon {
   font-size: 16px;
+  color: $text-tertiary;
 
   &.view { color: $info-color; }
   &.generate { color: $success-color; }
@@ -1453,7 +1671,7 @@ watch(permSearchKeyword, (val) => {
   border: 1px solid $border-color;
   border-radius: $radius-md;
   padding: 12px;
-  max-height: 300px;
+  max-height: 320px;
   overflow-y: auto;
   background: $bg-primary;
 }
@@ -1464,6 +1682,13 @@ watch(permSearchKeyword, (val) => {
   gap: 8px;
   padding: 4px 0;
   flex: 1;
+  min-height: 32px;
+
+  &.is-template {
+    &:hover .node-perms {
+      opacity: 1;
+    }
+  }
 }
 
 .node-icon {
@@ -1479,13 +1704,100 @@ watch(permSearchKeyword, (val) => {
 
 .node-perms {
   display: flex;
-  gap: 8px;
-  opacity: 0.5;
+  gap: 4px;
+  opacity: 0.7;
+  transition: opacity $transition-fast;
+}
+
+.perm-icon-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: $radius-sm;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  background: $gray-100;
+  border: 1px solid transparent;
+  transition: all $transition-fast;
 
   .el-icon {
     font-size: 14px;
     color: $text-tertiary;
   }
+
+  &:hover:not(.disabled) {
+    background: rgba($primary-color, 0.1);
+    border-color: rgba($primary-color, 0.3);
+
+    .el-icon {
+      color: $primary-color;
+    }
+  }
+
+  &.active {
+    background: rgba($success-color, 0.15);
+    border-color: rgba($success-color, 0.3);
+
+    .el-icon {
+      color: $success-color;
+    }
+  }
+
+  &.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
+
+// 权限摘要
+.perm-summary {
+  margin-top: 12px;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, rgba($success-color, 0.05), rgba($primary-color, 0.05));
+  border-radius: $radius-md;
+  border: 1px solid rgba($success-color, 0.15);
+}
+
+.summary-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: $font-weight-medium;
+  color: $text-primary;
+  margin-bottom: 10px;
+
+  .el-icon {
+    color: $success-color;
+  }
+}
+
+.summary-stats {
+  display: flex;
+  gap: 24px;
+}
+
+.summary-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.summary-count {
+  font-size: 20px;
+  font-weight: $font-weight-bold;
+  line-height: 1.2;
+
+  &.view { color: $info-color; }
+  &.generate { color: $success-color; }
+  &.download { color: $warning-color; }
+  &.edit { color: $primary-color; }
+}
+
+.summary-label {
+  font-size: 12px;
+  color: $text-tertiary;
 }
 
 .perm-empty {
@@ -1498,7 +1810,7 @@ watch(permSearchKeyword, (val) => {
   gap: 8px;
   margin-top: 12px;
   padding: 12px;
-  background: rgba($info-color, 0.1);
+  background: rgba($info-color, 0.08);
   border-radius: $radius-md;
   font-size: 12px;
   color: $info-color;
