@@ -233,26 +233,26 @@
         <el-table-column label="操作" width="180" fixed="right">
           <template #default="{ row }">
             <div class="table-actions">
-              <el-button text type="primary" @click.stop="handleDesign(row)">
+              <el-button link type="primary" @click.stop="handleDesign(row)">
                 设计
               </el-button>
-              <el-button 
+              <el-button
                 v-if="row.status !== 1"
-                text 
-                type="success" 
+                link
+                type="success"
                 @click.stop="handlePublish(row)"
               >
                 发布
               </el-button>
-              <el-button 
+              <el-button
                 v-else
-                text 
-                type="warning" 
+                link
+                type="warning"
                 @click.stop="handleOffline(row)"
               >
                 下线
               </el-button>
-              <el-button text type="danger" @click.stop="handleDelete(row)">
+              <el-button link type="danger" @click.stop="handleDelete(row)">
                 删除
               </el-button>
             </div>

@@ -236,14 +236,14 @@
             </div>
             
             <div class="params-list">
-              <div 
-                v-for="(param, index) in paramList" 
+              <div
+                v-for="(param, index) in paramList"
                 :key="index"
                 class="param-item"
               >
                 <div class="param-header">
                   <span class="param-name">{{ param.name || '新参数' }}</span>
-                  <el-button text type="danger" @click="removeParam(index)">
+                  <el-button link type="danger" @click="removeParam(index)">
                     <el-icon><Delete /></el-icon>
                   </el-button>
                 </div>

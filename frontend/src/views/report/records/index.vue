@@ -155,7 +155,7 @@
             <div class="table-actions">
               <el-button
                 v-if="row.status === 1"
-                text
+                link
                 type="primary"
                 @click="handlePreview(row)"
               >
@@ -163,7 +163,7 @@
               </el-button>
               <el-button
                 v-if="row.status === 1"
-                text
+                link
                 type="success"
                 @click="handleDownload(row)"
               >
@@ -171,14 +171,14 @@
               </el-button>
               <el-button
                 v-if="row.status === 2"
-                text
+                link
                 type="warning"
                 @click="handleRegenerate(row)"
               >
                 重试
               </el-button>
               <el-button
-                text
+                link
                 type="danger"
                 @click="handleDelete(row)"
               >

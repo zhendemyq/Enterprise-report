@@ -145,16 +145,16 @@
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
             <div class="table-actions">
-              <el-button text type="primary" @click="handleExecute(row)">
+              <el-button link type="primary" @click="handleExecute(row)">
                 执行
               </el-button>
-              <el-button text type="primary" @click="handleEdit(row)">
+              <el-button link type="primary" @click="handleEdit(row)">
                 编辑
               </el-button>
-              <el-button text type="primary" @click="handleViewLog(row)">
+              <el-button link type="primary" @click="handleViewLog(row)">
                 日志
               </el-button>
-              <el-button text type="danger" @click="handleDelete(row)">
+              <el-button link type="danger" @click="handleDelete(row)">
                 删除
               </el-button>
             </div>
