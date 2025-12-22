@@ -57,14 +57,14 @@ public class ReportTemplateVO {
 
     private Integer sort;
 
+    /**
+     * 使用次数
+     */
+    private Integer useCount;
+
     private String createByName;
 
     private LocalDateTime createTime;
 
     private LocalDateTime updateTime;
-
-    /**
-     * 使用次数（仪表盘统计用）
-     */
-    private Integer usageCount;
 }
