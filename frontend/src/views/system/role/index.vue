@@ -77,7 +77,7 @@
         <!-- 角色卡片头部 -->
         <div class="card-header">
           <div class="role-icon" :style="{ background: role.color || '#007AFF' }">
-            <el-icon v-if="isAdminRole(role.roleCode)"><Crown /></el-icon>
+            <el-icon v-if="isAdminRole(role.roleCode)"><Medal /></el-icon>
             <el-icon v-else-if="isDepartmentRole(role.roleCode)"><OfficeBuilding /></el-icon>
             <el-icon v-else><User /></el-icon>
           </div>
@@ -192,7 +192,7 @@
 
         <!-- 管理员标识条 -->
         <div v-if="isAdminRole(role.roleCode)" class="admin-badge">
-          <el-icon><Star /></el-icon>
+          <el-icon><StarFilled /></el-icon>
           拥有所有权限
         </div>
       </div>
@@ -478,7 +478,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   User, More, Edit, Key, Delete, Plus, Folder, Document, InfoFilled,
-  Check, Lock, UserFilled, Crown, OfficeBuilding, Star, CopyDocument,
+  Check, Lock, UserFilled, Medal, OfficeBuilding, StarFilled, CopyDocument,
   View, DocumentAdd, Download
 } from '@element-plus/icons-vue'
 import {
