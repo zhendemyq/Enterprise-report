@@ -319,9 +319,46 @@
                 <el-icon class="loading-icon" :size="48"><Loading /></el-icon>
                 <p>正在生成预览...</p>
               </div>
-              <!-- 预览数据表格 -->
-              <div v-else-if="previewData.length > 0" class="preview-table-wrapper">
-                <el-table :data="previewData" border stripe max-height="calc(100vh - 300px)">
+
+              <!-- 预览内容 -->
+              <div v-else-if="previewData.length > 0 || parsedComponents.length > 0" class="preview-table-wrapper">
+                <!-- 渲染组件 -->
+                <div v-if="parsedComponents.length > 0" class="components-preview">
+                  <template v-for="(comp, idx) in parsedComponents" :key="idx">
+                    <!-- 文本组件 -->
+                    <div v-if="comp.type === 'text'" class="preview-text" :style="getTextStyle(comp)">
+                      {{ comp.content }}
+                    </div>
+
+                    <!-- 图片组件 -->
+                    <div v-else-if="comp.type === 'image'" class="preview-image">
+                      <img :src="comp.url" :alt="comp.alt" :style="{ width: comp.width + 'px', height: comp.height + 'px' }" />
+                    </div>
+
+                    <!-- 公式组件 -->
+                    <div v-else-if="comp.type === 'formula'" class="preview-formula">
+                      <el-tag type="success">
+                        {{ comp.label }}: {{ comp.result }}
+                      </el-tag>
+                    </div>
+
+                    <!-- 图表组件 -->
+                    <div v-else-if="comp.type === 'chart'" class="preview-chart">
+                      <div :ref="el => chartRefs[idx] = el" :style="{ width: comp.width + 'px', height: comp.height + 'px' }"></div>
+                    </div>
+
+                    <!-- 嵌套表格组件 -->
+                    <div v-else-if="comp.type === 'table'" class="preview-nested-table">
+                      <h4 v-if="comp.title">{{ comp.title }}</h4>
+                      <el-table :data="comp.data" border size="small" max-height="300">
+                        <el-table-column v-for="field in comp.fields" :key="field" :prop="field" :label="field" min-width="100" />
+                      </el-table>
+                    </div>
+                  </template>
+                </div>
+
+                <!-- 数据表格 -->
+                <el-table v-if="previewData.length > 0" :data="previewData" border stripe max-height="calc(100vh - 300px)">
                   <el-table-column
                     v-for="(col, index) in previewColumns"
                     :key="index"
@@ -332,6 +369,7 @@
                 </el-table>
                 <p class="preview-info">共 {{ previewData.length }} 条数据</p>
               </div>
+
               <!-- 空状态 -->
               <div v-else class="preview-placeholder">
                 <el-icon :size="48"><Picture /></el-icon>
@@ -423,11 +461,149 @@
         </div>
       </div>
     </div>
+
+    <!-- 组件配置对话框 -->
+    <el-dialog
+      v-model="componentDialogVisible"
+      :title="componentDialogTitle"
+      width="600px"
+      destroy-on-close
+    >
+      <!-- 文本组件配置 -->
+      <div v-if="currentComponentType === 'text'" class="component-config">
+        <el-form label-position="top">
+          <el-form-item label="文本内容">
+            <el-input
+              v-model="componentConfig.text.content"
+              type="textarea"
+              :rows="4"
+              placeholder="输入静态文本内容，如报表标题、备注等"
+            />
+          </el-form-item>
+          <el-form-item label="文本样式">
+            <div class="style-options">
+              <el-checkbox v-model="componentConfig.text.bold">加粗</el-checkbox>
+              <el-checkbox v-model="componentConfig.text.italic">斜体</el-checkbox>
+              <el-select v-model="componentConfig.text.fontSize" placeholder="字体大小" style="width: 120px; margin-left: 16px;">
+                <el-option v-for="size in [12, 14, 16, 18, 20, 24, 28, 32]" :key="size" :label="`${size}px`" :value="size" />
+              </el-select>
+            </div>
+          </el-form-item>
+        </el-form>
+      </div>
+
+      <!-- 图片组件配置 -->
+      <div v-if="currentComponentType === 'image'" class="component-config">
+        <el-form label-position="top">
+          <el-form-item label="图片URL">
+            <el-input v-model="componentConfig.image.url" placeholder="输入图片URL地址" />
+          </el-form-item>
+          <el-form-item label="图片尺寸">
+            <div class="size-inputs">
+              <el-input-number v-model="componentConfig.image.width" :min="50" :max="800" placeholder="宽度" />
+              <span style="margin: 0 8px;">×</span>
+              <el-input-number v-model="componentConfig.image.height" :min="50" :max="600" placeholder="高度" />
+            </div>
+          </el-form-item>
+          <el-form-item label="替代文本">
+            <el-input v-model="componentConfig.image.alt" placeholder="图片无法显示时的替代文本" />
+          </el-form-item>
+        </el-form>
+      </div>
+
+      <!-- 公式组件配置 -->
+      <div v-if="currentComponentType === 'formula'" class="component-config">
+        <el-form label-position="top">
+          <el-form-item label="公式类型">
+            <el-select v-model="componentConfig.formula.type" placeholder="选择公式类型" @change="handleFormulaTypeChange">
+              <el-option label="求和 (SUM)" value="SUM" />
+              <el-option label="平均值 (AVERAGE)" value="AVERAGE" />
+              <el-option label="计数 (COUNT)" value="COUNT" />
+              <el-option label="最大值 (MAX)" value="MAX" />
+              <el-option label="最小值 (MIN)" value="MIN" />
+              <el-option label="自定义公式" value="CUSTOM" />
+            </el-select>
+          </el-form-item>
+          <el-form-item v-if="componentConfig.formula.type !== 'CUSTOM'" label="选择字段">
+            <el-select v-model="componentConfig.formula.field" placeholder="选择要计算的字段">
+              <el-option v-for="field in fieldList" :key="field.name" :label="field.name" :value="field.name" />
+            </el-select>
+          </el-form-item>
+          <el-form-item v-if="componentConfig.formula.type === 'CUSTOM'" label="自定义公式">
+            <el-input
+              v-model="componentConfig.formula.expression"
+              placeholder="例如: =SUM(A1:A10) 或 =A1*B1+C1"
+            />
+          </el-form-item>
+          <el-form-item label="预览">
+            <el-tag type="info">{{ formulaPreview }}</el-tag>
+          </el-form-item>
+        </el-form>
+      </div>
+
+      <!-- 图表组件配置 -->
+      <div v-if="currentComponentType === 'chart'" class="component-config">
+        <el-form label-position="top">
+          <el-form-item label="图表类型">
+            <el-select v-model="componentConfig.chart.type" placeholder="选择图表类型">
+              <el-option label="柱状图" value="bar" />
+              <el-option label="折线图" value="line" />
+              <el-option label="饼图" value="pie" />
+              <el-option label="面积图" value="area" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="图表标题">
+            <el-input v-model="componentConfig.chart.title" placeholder="输入图表标题" />
+          </el-form-item>
+          <el-form-item label="X轴字段（分类）">
+            <el-select v-model="componentConfig.chart.xField" placeholder="选择X轴字段">
+              <el-option v-for="field in fieldList" :key="field.name" :label="field.name" :value="field.name" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="Y轴字段（数值）">
+            <el-select v-model="componentConfig.chart.yField" placeholder="选择Y轴字段">
+              <el-option v-for="field in fieldList" :key="field.name" :label="field.name" :value="field.name" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="图表尺寸">
+            <div class="size-inputs">
+              <el-input-number v-model="componentConfig.chart.width" :min="200" :max="1200" placeholder="宽度" />
+              <span style="margin: 0 8px;">×</span>
+              <el-input-number v-model="componentConfig.chart.height" :min="150" :max="800" placeholder="高度" />
+            </div>
+          </el-form-item>
+        </el-form>
+      </div>
+
+      <!-- 表格组件配置 -->
+      <div v-if="currentComponentType === 'table'" class="component-config">
+        <el-form label-position="top">
+          <el-form-item label="表格标题">
+            <el-input v-model="componentConfig.table.title" placeholder="输入表格标题" />
+          </el-form-item>
+          <el-form-item label="选择显示字段">
+            <el-checkbox-group v-model="componentConfig.table.fields">
+              <el-checkbox v-for="field in fieldList" :key="field.name" :label="field.name">
+                {{ field.name }}
+              </el-checkbox>
+            </el-checkbox-group>
+          </el-form-item>
+          <el-form-item label="显示行数限制">
+            <el-input-number v-model="componentConfig.table.limit" :min="1" :max="1000" placeholder="限制显示行数" />
+          </el-form-item>
+        </el-form>
+      </div>
+
+      <template #footer>
+        <el-button @click="componentDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="confirmComponentInsert">确认插入</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed, watch } from 'vue'
+import { ref, reactive, onMounted, computed, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getTemplateDetail, createTemplate, updateTemplate, publishTemplate, saveTemplateDesign } from '@/api/template'
@@ -464,6 +640,66 @@ const components = [
   { type: 'chart', name: '图表', icon: 'TrendCharts' },
   { type: 'formula', name: '公式', icon: 'Operation' }
 ]
+
+// 组件配置对话框
+const componentDialogVisible = ref(false)
+const currentComponentType = ref('')
+const componentDialogTitle = computed(() => {
+  const titles = {
+    text: '配置文本组件',
+    image: '配置图片组件',
+    table: '配置表格组件',
+    chart: '配置图表组件',
+    formula: '配置公式组件'
+  }
+  return titles[currentComponentType.value] || '组件配置'
+})
+
+// 组件配置数据
+const componentConfig = reactive({
+  text: {
+    content: '',
+    bold: false,
+    italic: false,
+    fontSize: 14
+  },
+  image: {
+    url: '',
+    width: 200,
+    height: 150,
+    alt: ''
+  },
+  formula: {
+    type: 'SUM',
+    field: '',
+    expression: ''
+  },
+  chart: {
+    type: 'bar',
+    title: '',
+    xField: '',
+    yField: '',
+    width: 400,
+    height: 300
+  },
+  table: {
+    title: '',
+    fields: [],
+    limit: 100
+  }
+})
+
+// 公式预览
+const formulaPreview = computed(() => {
+  const { type, field, expression } = componentConfig.formula
+  if (type === 'CUSTOM') {
+    return expression || '请输入自定义公式'
+  }
+  if (!field) {
+    return `=${type}(选择字段)`
+  }
+  return `=${type}(\${${field}})`
+})
 
 // 数据源相关
 const datasourceId = ref(null)
@@ -505,6 +741,10 @@ const previewLoading = ref(false)
 const previewData = ref([])
 const previewColumns = ref([])
 const generatedReportId = ref(null)
+
+// 组件解析相关
+const parsedComponents = ref([])
+const chartRefs = reactive({})
 
 const cellData = reactive({})
 
@@ -859,11 +1099,125 @@ const handleDragStart = (event, comp) => {
 }
 
 const handleComponentInsert = (comp) => {
-  if (!univerRef.value?.insertComponentPlaceholder) return
-  const inserted = univerRef.value.insertComponentPlaceholder(comp.type, comp.name)
-  if (!inserted) {
-    ElMessage.warning('请先选择单元格')
+  if (!currentSelectedCell.value) {
+    ElMessage.warning('请先选择一个单元格')
+    return
   }
+
+  // 重置配置
+  resetComponentConfig(comp.type)
+
+  // 打开配置对话框
+  currentComponentType.value = comp.type
+  componentDialogVisible.value = true
+}
+
+// 重置组件配置
+const resetComponentConfig = (type) => {
+  switch (type) {
+    case 'text':
+      componentConfig.text = { content: '', bold: false, italic: false, fontSize: 14 }
+      break
+    case 'image':
+      componentConfig.image = { url: '', width: 200, height: 150, alt: '' }
+      break
+    case 'formula':
+      componentConfig.formula = { type: 'SUM', field: '', expression: '' }
+      break
+    case 'chart':
+      componentConfig.chart = { type: 'bar', title: '', xField: '', yField: '', width: 400, height: 300 }
+      break
+    case 'table':
+      componentConfig.table = { title: '', fields: [], limit: 100 }
+      break
+  }
+}
+
+// 公式类型变化处理
+const handleFormulaTypeChange = () => {
+  componentConfig.formula.field = ''
+  componentConfig.formula.expression = ''
+}
+
+// 确认插入组件
+const confirmComponentInsert = () => {
+  if (!currentSelectedCell.value || !univerRef.value) {
+    ElMessage.warning('请先选择一个单元格')
+    return
+  }
+
+  let placeholder = ''
+  const type = currentComponentType.value
+
+  switch (type) {
+    case 'text': {
+      const { content, bold, italic, fontSize } = componentConfig.text
+      if (!content.trim()) {
+        ElMessage.warning('请输入文本内容')
+        return
+      }
+      // 格式: [[text:内容|bold:true|italic:false|fontSize:14]]
+      placeholder = `[[text:${content}|bold:${bold}|italic:${italic}|fontSize:${fontSize}]]`
+      break
+    }
+    case 'image': {
+      const { url, width, height, alt } = componentConfig.image
+      if (!url.trim()) {
+        ElMessage.warning('请输入图片URL')
+        return
+      }
+      // 格式: [[image:url|width:200|height:150|alt:描述]]
+      placeholder = `[[image:${url}|width:${width}|height:${height}|alt:${alt}]]`
+      break
+    }
+    case 'formula': {
+      const { type: formulaType, field, expression } = componentConfig.formula
+      if (formulaType === 'CUSTOM') {
+        if (!expression.trim()) {
+          ElMessage.warning('请输入自定义公式')
+          return
+        }
+        placeholder = `[[formula:${expression}]]`
+      } else {
+        if (!field) {
+          ElMessage.warning('请选择要计算的字段')
+          return
+        }
+        // 格式: [[formula:SUM|field:amount]]
+        placeholder = `[[formula:${formulaType}|field:${field}]]`
+      }
+      break
+    }
+    case 'chart': {
+      const { type: chartType, title, xField, yField, width, height } = componentConfig.chart
+      if (!xField || !yField) {
+        ElMessage.warning('请选择X轴和Y轴字段')
+        return
+      }
+      // 格式: [[chart:bar|title:销售统计|xField:month|yField:amount|width:400|height:300]]
+      placeholder = `[[chart:${chartType}|title:${title}|xField:${xField}|yField:${yField}|width:${width}|height:${height}]]`
+      break
+    }
+    case 'table': {
+      const { title, fields, limit } = componentConfig.table
+      if (fields.length === 0) {
+        ElMessage.warning('请选择要显示的字段')
+        return
+      }
+      // 格式: [[table:标题|fields:field1,field2,field3|limit:100]]
+      placeholder = `[[table:${title}|fields:${fields.join(',')}|limit:${limit}]]`
+      break
+    }
+  }
+
+  // 插入到单元格
+  const data = univerRef.value.exportToJson()
+  if (!data.cellData) data.cellData = {}
+  data.cellData[currentSelectedCell.value] = placeholder
+  univerRef.value.importFromJson(data)
+
+  componentDialogVisible.value = false
+  ElMessage.success(`已插入${componentDialogTitle.value.replace('配置', '')}`)
 }
 
 // 字段拖拽开始 - 插入到当前选中单元格
@@ -949,6 +1303,208 @@ const extractFieldLayout = () => {
   return fieldMappings.length > 0 ? fieldMappings : null
 }
 
+// 解析组件占位符
+const parseComponents = (cellData, queryData) => {
+  const components = []
+  const componentPattern = /\[\[(\w+):(.+?)\]\]/
+
+  for (const [cellRef, value] of Object.entries(cellData)) {
+    if (!value || typeof value !== 'string') continue
+
+    const match = value.match(componentPattern)
+    if (!match) continue
+
+    const [, type, configStr] = match
+    const config = parseComponentConfig(configStr)
+
+    switch (type) {
+      case 'text':
+        components.push({
+          type: 'text',
+          cellRef,
+          content: config.content || configStr.split('|')[0],
+          bold: config.bold === 'true',
+          italic: config.italic === 'true',
+          fontSize: parseInt(config.fontSize) || 14
+        })
+        break
+
+      case 'image':
+        components.push({
+          type: 'image',
+          cellRef,
+          url: config.url || configStr.split('|')[0],
+          width: parseInt(config.width) || 200,
+          height: parseInt(config.height) || 150,
+          alt: config.alt || ''
+        })
+        break
+
+      case 'formula': {
+        const formulaType = config.type || configStr.split('|')[0]
+        const field = config.field
+        let result = 0
+        let label = formulaType
+
+        if (field && queryData.length > 0) {
+          const values = queryData.map(row => parseFloat(row[field]) || 0)
+          switch (formulaType) {
+            case 'SUM':
+              result = values.reduce((a, b) => a + b, 0)
+              label = `${field} 求和`
+              break
+            case 'AVERAGE':
+              result = values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 0
+              label = `${field} 平均值`
+              break
+            case 'COUNT':
+              result = values.length
+              label = `${field} 计数`
+              break
+            case 'MAX':
+              result = Math.max(...values)
+              label = `${field} 最大值`
+              break
+            case 'MIN':
+              result = Math.min(...values)
+              label = `${field} 最小值`
+              break
+          }
+        }
+
+        components.push({
+          type: 'formula',
+          cellRef,
+          formulaType,
+          field,
+          result: typeof result === 'number' ? result.toFixed(2) : result,
+          label
+        })
+        break
+      }
+
+      case 'chart':
+        components.push({
+          type: 'chart',
+          cellRef,
+          chartType: config.type || configStr.split('|')[0] || 'bar',
+          title: config.title || '',
+          xField: config.xField || '',
+          yField: config.yField || '',
+          width: parseInt(config.width) || 400,
+          height: parseInt(config.height) || 300,
+          data: queryData
+        })
+        break
+
+      case 'table': {
+        const fields = config.fields ? config.fields.split(',') : []
+        const limit = parseInt(config.limit) || 100
+        const tableData = queryData.slice(0, limit).map(row => {
+          const newRow = {}
+          fields.forEach(f => {
+            newRow[f] = row[f] !== undefined ? row[f] : ''
+          })
+          return newRow
+        })
+
+        components.push({
+          type: 'table',
+          cellRef,
+          title: config.title || configStr.split('|')[0] || '',
+          fields,
+          limit,
+          data: tableData
+        })
+        break
+      }
+    }
+  }
+
+  return components
+}
+
+// 解析组件配置字符串
+const parseComponentConfig = (configStr) => {
+  const config = {}
+  const parts = configStr.split('|')
+
+  parts.forEach((part, index) => {
+    if (index === 0 && !part.includes(':')) {
+      // 第一部分可能是主要内容
+      config.content = part
+      return
+    }
+    const colonIndex = part.indexOf(':')
+    if (colonIndex > 0) {
+      const key = part.substring(0, colonIndex)
+      const value = part.substring(colonIndex + 1)
+      config[key] = value
+    }
+  })
+
+  return config
+}
+
+// 获取文本样式
+const getTextStyle = (comp) => {
+  return {
+    fontWeight: comp.bold ? 'bold' : 'normal',
+    fontStyle: comp.italic ? 'italic' : 'normal',
+    fontSize: `${comp.fontSize}px`
+  }
+}
+
+// 渲染图表
+const renderCharts = async () => {
+  // 动态导入 echarts
+  const echarts = await import('echarts')
+
+  parsedComponents.value.forEach((comp, idx) => {
+    if (comp.type !== 'chart') return
+
+    const chartDom = chartRefs[idx]
+    if (!chartDom) return
+
+    const chart = echarts.init(chartDom)
+
+    // 准备数据
+    const xData = [...new Set(comp.data.map(row => row[comp.xField]))]
+    const yData = xData.map(x => {
+      const rows = comp.data.filter(row => row[comp.xField] === x)
+      return rows.reduce((sum, row) => sum + (parseFloat(row[comp.yField]) || 0), 0)
+    })
+
+    let option = {}
+
+    if (comp.chartType === 'pie') {
+      option = {
+        title: { text: comp.title, left: 'center' },
+        tooltip: { trigger: 'item' },
+        series: [{
+          type: 'pie',
+          radius: '50%',
+          data: xData.map((name, i) => ({ name, value: yData[i] }))
+        }]
+      }
+    } else {
+      option = {
+        title: { text: comp.title, left: 'center' },
+        tooltip: { trigger: 'axis' },
+        xAxis: { type: 'category', data: xData },
+        yAxis: { type: 'value' },
+        series: [{
+          type: comp.chartType === 'area' ? 'line' : comp.chartType,
+          data: yData,
+          areaStyle: comp.chartType === 'area' ? {} : undefined
+        }]
+      }
+    }
+
+    chart.setOption(option)
+  })
+}
+
 // 生成预览
 const generatePreview = async () => {
   if (!datasourceId.value) {
@@ -966,11 +1522,20 @@ const generatePreview = async () => {
   previewLoading.value = true
   previewData.value = []
   previewColumns.value = []
+  parsedComponents.value = []
 
   try {
     // 直接执行SQL查询获取预览数据
     const res = await executeQuery(datasourceId.value, querySql.value)
     const data = res.data || []
+
+    // 解析设计器中的组件
+    if (univerRef.value) {
+      const designData = univerRef.value.exportToJson()
+      if (designData.cellData) {
+        parsedComponents.value = parseComponents(designData.cellData, data)
+      }
+    }
 
     if (data.length > 0) {
       // 尝试从设计器中提取字段布局
@@ -1001,6 +1566,12 @@ const generatePreview = async () => {
       }
     } else {
       ElMessage.info('查询结果为空')
+    }
+
+    // 渲染图表（需要等待DOM更新）
+    await nextTick()
+    if (parsedComponents.value.some(c => c.type === 'chart')) {
+      await renderCharts()
     }
   } catch (error) {
     console.error('预览失败:', error)
@@ -1684,6 +2255,69 @@ const handlePublish = async () => {
   color: $text-secondary;
   margin-top: 12px;
   text-align: right;
+}
+
+// 组件预览样式
+.components-preview {
+  margin-bottom: 20px;
+  padding: 16px;
+  background: $gray-50;
+  border-radius: $radius-lg;
+}
+
+.preview-text {
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  background: #fff;
+  border-radius: $radius-sm;
+  border-left: 3px solid $primary-color;
+}
+
+.preview-image {
+  margin-bottom: 8px;
+  text-align: center;
+
+  img {
+    max-width: 100%;
+    border-radius: $radius-sm;
+    box-shadow: $shadow-sm;
+  }
+}
+
+.preview-formula {
+  margin-bottom: 8px;
+}
+
+.preview-chart {
+  margin-bottom: 16px;
+  background: #fff;
+  border-radius: $radius-sm;
+  padding: 8px;
+  box-shadow: $shadow-sm;
+}
+
+.preview-nested-table {
+  margin-bottom: 16px;
+
+  h4 {
+    margin-bottom: 8px;
+    font-size: 14px;
+    color: $text-primary;
+  }
+}
+
+// 组件配置对话框样式
+.component-config {
+  .style-options {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .size-inputs {
+    display: flex;
+    align-items: center;
+  }
 }
 
 // 右侧属性面板
