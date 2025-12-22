@@ -86,9 +86,18 @@ public class ReportTemplateServiceImpl extends ServiceImpl<ReportTemplateMapper,
     public IPage<ReportTemplateVO> pageTemplates(ReportTemplateQueryDTO queryDTO) {
         Page<ReportTemplate> page = new Page<>(queryDTO.getPageNum(), queryDTO.getPageSize());
         LambdaQueryWrapper<ReportTemplate> wrapper = new LambdaQueryWrapper<>();
-        wrapper.like(StringUtils.isNotBlank(queryDTO.getTemplateName()), 
+
+        // 关键词搜索（模板名称/编码）
+        if (StringUtils.isNotBlank(queryDTO.getKeyword())) {
+            wrapper.and(w -> w
+                    .like(ReportTemplate::getTemplateName, queryDTO.getKeyword())
+                    .or().like(ReportTemplate::getTemplateCode, queryDTO.getKeyword())
+            );
+        }
+
+        wrapper.like(StringUtils.isNotBlank(queryDTO.getTemplateName()),
                     ReportTemplate::getTemplateName, queryDTO.getTemplateName())
-                .like(StringUtils.isNotBlank(queryDTO.getTemplateCode()), 
+                .like(StringUtils.isNotBlank(queryDTO.getTemplateCode()),
                     ReportTemplate::getTemplateCode, queryDTO.getTemplateCode())
                 .eq(queryDTO.getTemplateType() != null, ReportTemplate::getTemplateType, queryDTO.getTemplateType())
                 .eq(queryDTO.getCategoryId() != null, ReportTemplate::getCategoryId, queryDTO.getCategoryId())

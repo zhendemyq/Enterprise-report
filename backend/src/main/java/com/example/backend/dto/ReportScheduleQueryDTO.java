@@ -9,6 +9,11 @@ import lombok.Data;
 public class ReportScheduleQueryDTO extends PageDTO {
 
     /**
+     * 搜索关键词（任务名称）
+     */
+    private String keyword;
+
+    /**
      * 任务名称
      */
     private String taskName;

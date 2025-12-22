@@ -9,6 +9,11 @@ import lombok.Data;
 public class ReportTemplateQueryDTO extends PageDTO {
 
     /**
+     * 搜索关键词（模板名称/编码）
+     */
+    private String keyword;
+
+    /**
      * 模板名称
      */
     private String templateName;

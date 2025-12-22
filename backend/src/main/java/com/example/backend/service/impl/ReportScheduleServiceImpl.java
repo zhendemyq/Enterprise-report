@@ -141,6 +141,12 @@ public class ReportScheduleServiceImpl extends ServiceImpl<ReportScheduleMapper,
     public IPage<ReportScheduleVO> pageSchedules(ReportScheduleQueryDTO queryDTO) {
         Page<ReportSchedule> page = new Page<>(queryDTO.getPageNum(), queryDTO.getPageSize());
         LambdaQueryWrapper<ReportSchedule> wrapper = new LambdaQueryWrapper<>();
+
+        // 关键词搜索（任务名称）
+        if (StringUtils.isNotBlank(queryDTO.getKeyword())) {
+            wrapper.like(ReportSchedule::getTaskName, queryDTO.getKeyword());
+        }
+
         wrapper.like(StringUtils.isNotBlank(queryDTO.getTaskName()), ReportSchedule::getTaskName, queryDTO.getTaskName())
                 .eq(queryDTO.getTemplateId() != null, ReportSchedule::getTemplateId, queryDTO.getTemplateId())
                 .eq(queryDTO.getStatus() != null, ReportSchedule::getStatus, queryDTO.getStatus())
