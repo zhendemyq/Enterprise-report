@@ -214,7 +214,18 @@ const isFormula = (col, row) => {
 
 // 获取单元格样式
 const getCellStyle = (col, row) => {
-  return fallbackCellStyles[`${col}${row}`] || {}
+  const style = fallbackCellStyles[`${col}${row}`] || {}
+  const result = {}
+
+  if (style.fontWeight) result.fontWeight = style.fontWeight
+  if (style.fontStyle) result.fontStyle = style.fontStyle
+  if (style.textDecoration) result.textDecoration = style.textDecoration
+  if (style.textAlign) result.textAlign = style.textAlign
+  if (style.fontSize) result.fontSize = `${style.fontSize}px`
+  if (style.backgroundColor) result.backgroundColor = style.backgroundColor
+  if (style.color) result.color = style.color
+
+  return result
 }
 
 // 检查是否选中

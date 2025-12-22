@@ -125,6 +125,7 @@
               :fields="fieldList"
               @ready="handleUniverReady"
               @change="handleSpreadsheetChange"
+              @cellSelect="handleCellSelect"
             />
           </div>
           
@@ -334,55 +335,59 @@
       <div class="right-panel">
         <div class="panel-section">
           <div class="section-title">属性设置</div>
-          
+
           <el-form label-position="top" class="property-form">
+            <el-form-item label="当前单元格">
+              <el-input v-model="currentSelectedCell" readonly size="small" placeholder="未选中" />
+            </el-form-item>
+
             <el-form-item label="单元格样式">
               <div class="style-toolbar">
                 <el-button-group>
-                  <el-button size="small">
-                    <el-icon><Operation /></el-icon>
+                  <el-button size="small" :type="cellStyle.fontWeight === 'bold' ? 'primary' : ''" @click="toggleBold" title="加粗">
+                    <strong>B</strong>
                   </el-button>
-                  <el-button size="small">
-                    <el-icon><EditPen /></el-icon>
+                  <el-button size="small" :type="cellStyle.fontStyle === 'italic' ? 'primary' : ''" @click="toggleItalic" title="斜体">
+                    <em>I</em>
                   </el-button>
-                  <el-button size="small">
-                    <el-icon><Minus /></el-icon>
+                  <el-button size="small" :type="cellStyle.textDecoration === 'underline' ? 'primary' : ''" @click="toggleUnderline" title="下划线">
+                    <u>U</u>
                   </el-button>
                 </el-button-group>
               </div>
             </el-form-item>
-            
+
             <el-form-item label="对齐方式">
               <el-button-group>
-                <el-button size="small">
+                <el-button size="small" :type="cellStyle.textAlign === 'left' ? 'primary' : ''" @click="setTextAlign('left')" title="左对齐">
                   <el-icon><Back /></el-icon>
                 </el-button>
-                <el-button size="small">
+                <el-button size="small" :type="cellStyle.textAlign === 'center' ? 'primary' : ''" @click="setTextAlign('center')" title="居中">
                   <el-icon><Position /></el-icon>
                 </el-button>
-                <el-button size="small">
+                <el-button size="small" :type="cellStyle.textAlign === 'right' ? 'primary' : ''" @click="setTextAlign('right')" title="右对齐">
                   <el-icon><Right /></el-icon>
                 </el-button>
               </el-button-group>
             </el-form-item>
-            
+
             <el-form-item label="字体大小">
-              <el-input-number v-model="fontSize" :min="8" :max="72" size="small" />
+              <el-input-number v-model="cellStyle.fontSize" :min="8" :max="72" size="small" @change="applyCellStyle" />
             </el-form-item>
-            
+
             <el-form-item label="背景色">
-              <el-color-picker v-model="bgColor" size="small" />
+              <el-color-picker v-model="cellStyle.backgroundColor" size="small" @change="applyCellStyle" />
             </el-form-item>
-            
+
             <el-form-item label="字体颜色">
-              <el-color-picker v-model="fontColor" size="small" />
+              <el-color-picker v-model="cellStyle.color" size="small" @change="applyCellStyle" />
             </el-form-item>
           </el-form>
         </div>
-        
+
         <div class="panel-section">
           <div class="section-title">模板设置</div>
-          
+
           <el-form label-position="top" class="property-form">
             <el-form-item label="模板类型">
               <el-select v-model="templateType" placeholder="选择类型">
@@ -392,7 +397,7 @@
                 <el-option label="图表报表" :value="4" />
               </el-select>
             </el-form-item>
-            
+
             <el-form-item label="分页大小">
               <el-input-number v-model="pageSize" :min="100" :max="100000" :step="100" />
             </el-form-item>
@@ -466,6 +471,20 @@ const bgColor = ref('')
 const fontColor = ref('#000000')
 const pageSize = ref(1000)
 const enableCache = ref(true)
+
+// 当前选中单元格
+const currentSelectedCell = ref('')
+
+// 单元格样式
+const cellStyle = reactive({
+  fontWeight: 'normal',
+  fontStyle: 'normal',
+  textDecoration: 'none',
+  textAlign: 'left',
+  fontSize: 12,
+  backgroundColor: '',
+  color: '#000000'
+})
 
 // 预览相关
 const previewLoading = ref(false)
@@ -728,6 +747,80 @@ const getCellContent = (col, row) => {
 // 选中单元格
 const selectCell = (cell) => {
   selectedCell.value = cell
+}
+
+// ==================== 单元格样式操作 ====================
+
+// 处理单元格选择事件（从设计器组件接收）
+const handleCellSelect = (data) => {
+  if (data && data.col && data.row) {
+    currentSelectedCell.value = `${data.col}${data.row}`
+    // 加载该单元格的样式
+    loadCellStyle(currentSelectedCell.value)
+  }
+}
+
+// 加载单元格样式
+const loadCellStyle = (cellRef) => {
+  if (!univerRef.value) return
+  const data = univerRef.value.exportToJson()
+  const styles = data.cellStyles || {}
+  const style = styles[cellRef] || {}
+
+  cellStyle.fontWeight = style.fontWeight || 'normal'
+  cellStyle.fontStyle = style.fontStyle || 'normal'
+  cellStyle.textDecoration = style.textDecoration || 'none'
+  cellStyle.textAlign = style.textAlign || 'left'
+  cellStyle.fontSize = style.fontSize || 12
+  cellStyle.backgroundColor = style.backgroundColor || ''
+  cellStyle.color = style.color || '#000000'
+}
+
+// 应用单元格样式
+const applyCellStyle = () => {
+  if (!currentSelectedCell.value || !univerRef.value) {
+    ElMessage.warning('请先选择一个单元格')
+    return
+  }
+
+  const data = univerRef.value.exportToJson()
+  if (!data.cellStyles) data.cellStyles = {}
+
+  data.cellStyles[currentSelectedCell.value] = {
+    fontWeight: cellStyle.fontWeight,
+    fontStyle: cellStyle.fontStyle,
+    textDecoration: cellStyle.textDecoration,
+    textAlign: cellStyle.textAlign,
+    fontSize: cellStyle.fontSize,
+    backgroundColor: cellStyle.backgroundColor,
+    color: cellStyle.color
+  }
+
+  univerRef.value.importFromJson(data)
+}
+
+// 切换加粗
+const toggleBold = () => {
+  cellStyle.fontWeight = cellStyle.fontWeight === 'bold' ? 'normal' : 'bold'
+  applyCellStyle()
+}
+
+// 切换斜体
+const toggleItalic = () => {
+  cellStyle.fontStyle = cellStyle.fontStyle === 'italic' ? 'normal' : 'italic'
+  applyCellStyle()
+}
+
+// 切换下划线
+const toggleUnderline = () => {
+  cellStyle.textDecoration = cellStyle.textDecoration === 'underline' ? 'none' : 'underline'
+  applyCellStyle()
+}
+
+// 设置文本对齐
+const setTextAlign = (align) => {
+  cellStyle.textAlign = align
+  applyCellStyle()
 }
 
 // Univer设计器就绪事件
