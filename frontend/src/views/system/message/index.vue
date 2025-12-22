@@ -40,7 +40,6 @@
         </el-button>
         <el-button
           type="danger"
-          plain
           :disabled="selectedIds.length === 0"
           @click="handleBatchDelete"
         >
@@ -73,9 +72,9 @@
       class="message-table"
     >
       <el-table-column type="selection" width="50" />
-      <el-table-column label="接收用户" prop="userId" width="100">
+      <el-table-column label="接收用户" prop="userId" width="120">
         <template #default="{ row }">
-          <span>用户{{ row.userId }}</span>
+          <span>{{ getUserName(row.userId) }}</span>
         </template>
       </el-table-column>
       <el-table-column label="通知类型" width="100">
@@ -288,6 +287,12 @@ const getTypeName = (type) => {
 const getTypeTagType = (type) => {
   const map = { 1: 'primary', 2: 'success', 3: 'warning' }
   return map[type] || 'info'
+}
+
+// 获取用户名
+const getUserName = (userId) => {
+  const user = userList.value.find(u => u.id === userId)
+  return user ? (user.nickname || user.username) : `用户${userId}`
 }
 
 // 格式化时间
