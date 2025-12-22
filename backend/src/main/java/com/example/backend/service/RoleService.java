@@ -6,6 +6,7 @@ import com.example.backend.dto.RoleDTO;
 import com.example.backend.dto.RoleQueryDTO;
 import com.example.backend.entity.Role;
 import com.example.backend.vo.RoleVO;
+import com.example.backend.vo.UserVO;
 
 import java.util.List;
 
@@ -58,4 +59,9 @@ public interface RoleService extends IService<Role> {
      * 保存角色权限
      */
     void saveRolePermissions(Long roleId, List<Long> templateIds);
+
+    /**
+     * 获取角色下的用户列表
+     */
+    List<UserVO> getRoleUsers(Long roleId);
 }

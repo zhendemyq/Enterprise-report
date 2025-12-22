@@ -7,6 +7,7 @@ import com.example.backend.dto.RoleDTO;
 import com.example.backend.dto.RoleQueryDTO;
 import com.example.backend.service.RoleService;
 import com.example.backend.vo.RoleVO;
+import com.example.backend.vo.UserVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -83,5 +84,11 @@ public class RoleController {
     public Result<Void> saveRolePermissions(@PathVariable Long roleId, @RequestBody List<Long> templateIds) {
         roleService.saveRolePermissions(roleId, templateIds);
         return Result.success();
+    }
+
+    @Operation(summary = "获取角色下的用户列表")
+    @GetMapping("/{roleId}/users")
+    public Result<List<UserVO>> getRoleUsers(@PathVariable Long roleId) {
+        return Result.success(roleService.getRoleUsers(roleId));
     }
 }

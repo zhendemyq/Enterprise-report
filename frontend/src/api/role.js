@@ -84,3 +84,11 @@ export function getPermissionTree() {
     method: 'get'
   })
 }
+
+// 获取角色下的用户列表
+export function getRoleUsers(roleId) {
+  return request({
+    url: `/role/${roleId}/users`,
+    method: 'get'
+  })
+}

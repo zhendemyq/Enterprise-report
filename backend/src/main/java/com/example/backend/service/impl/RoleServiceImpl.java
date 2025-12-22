@@ -10,12 +10,16 @@ import com.example.backend.dto.RoleDTO;
 import com.example.backend.dto.RoleQueryDTO;
 import com.example.backend.entity.ReportPermission;
 import com.example.backend.entity.Role;
+import com.example.backend.entity.User;
+import com.example.backend.entity.UserRole;
 import com.example.backend.exception.BusinessException;
 import com.example.backend.mapper.ReportPermissionMapper;
 import com.example.backend.mapper.RoleMapper;
+import com.example.backend.mapper.UserMapper;
 import com.example.backend.mapper.UserRoleMapper;
 import com.example.backend.service.RoleService;
 import com.example.backend.vo.RoleVO;
+import com.example.backend.vo.UserVO;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -35,6 +39,9 @@ public class RoleServiceImpl extends ServiceImpl<RoleMapper, Role> implements Ro
 
     @Autowired
     private UserRoleMapper userRoleMapper;
+
+    @Autowired
+    private UserMapper userMapper;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -206,5 +213,38 @@ public class RoleServiceImpl extends ServiceImpl<RoleMapper, Role> implements Ro
                 }
             }
         }
+    }
+
+    @Override
+    public List<UserVO> getRoleUsers(Long roleId) {
+        // 查询拥有该角色的用户ID列表
+        LambdaQueryWrapper<UserRole> urWrapper = new LambdaQueryWrapper<>();
+        urWrapper.eq(UserRole::getRoleId, roleId);
+        List<UserRole> userRoles = userRoleMapper.selectList(urWrapper);
+
+        if (userRoles.isEmpty()) {
+            return List.of();
+        }
+
+        // 获取用户ID列表
+        List<Long> userIds = userRoles.stream()
+                .map(UserRole::getUserId)
+                .distinct()
+                .collect(Collectors.toList());
+
+        // 查询用户信息
+        LambdaQueryWrapper<User> userWrapper = new LambdaQueryWrapper<>();
+        userWrapper.in(User::getId, userIds)
+                .orderByDesc(User::getCreateTime);
+        List<User> users = userMapper.selectList(userWrapper);
+
+        // 转换为VO
+        return users.stream()
+                .map(user -> {
+                    UserVO vo = BeanUtil.copyProperties(user, UserVO.class);
+                    vo.setPassword(null); // 不返回密码
+                    return vo;
+                })
+                .collect(Collectors.toList());
     }
 }
