@@ -589,8 +589,8 @@ import {
   updateRole,
   deleteRole,
   toggleRoleStatus,
-  getRolePermissions,
-  saveRolePermissions,
+  getRoleDetailedPermissions,
+  saveRoleDetailedPermissions,
   getPermissionTree,
   getRoleUsers
 } from '@/api/role'
@@ -981,19 +981,27 @@ const handlePermission = async (role) => {
   templatePermissions.value = {}
 
   try {
-    const res = await getRolePermissions(role.id)
-    checkedPermissions.value = res.data || []
+    const res = await getRoleDetailedPermissions(role.id)
+    const detailedPerms = res.data || []
 
-    // 初始化细粒度权限（默认所有权限都开启）
-    checkedPermissions.value.forEach(id => {
-      templatePermissions.value[id] = { view: true, generate: true, download: true, edit: true }
+    // 初始化细粒度权限
+    const checkedIds = []
+    detailedPerms.forEach(perm => {
+      checkedIds.push(perm.templateId)
+      templatePermissions.value[perm.templateId] = {
+        view: perm.view || false,
+        generate: perm.generate || false,
+        download: perm.download || false,
+        edit: perm.edit || false
+      }
     })
+    checkedPermissions.value = checkedIds
 
     permDialogVisible.value = true
 
     await nextTick()
     if (permTreeRef.value) {
-      permTreeRef.value.setCheckedKeys(checkedPermissions.value)
+      permTreeRef.value.setCheckedKeys(checkedIds)
     }
   } catch (error) {
     console.error('加载角色权限失败:', error)
@@ -1073,7 +1081,17 @@ const handlePermSubmit = async () => {
   try {
     const checkedKeys = permTreeRef.value?.getCheckedKeys() || []
     const templateIds = checkedKeys.filter(id => id > 0)
-    await saveRolePermissions(currentRole.value.id, templateIds)
+
+    // 构建细粒度权限数据
+    const permissions = templateIds.map(templateId => ({
+      templateId,
+      view: templatePermissions.value[templateId]?.view ?? true,
+      generate: templatePermissions.value[templateId]?.generate ?? true,
+      download: templatePermissions.value[templateId]?.download ?? true,
+      edit: templatePermissions.value[templateId]?.edit ?? true
+    }))
+
+    await saveRoleDetailedPermissions(currentRole.value.id, permissions)
     ElMessage.success('权限配置已保存')
     permDialogVisible.value = false
     loadRoles()

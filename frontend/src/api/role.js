@@ -77,6 +77,23 @@ export function saveRolePermissions(roleId, permissionIds) {
   })
 }
 
+// 获取角色细粒度权限
+export function getRoleDetailedPermissions(roleId) {
+  return request({
+    url: `/role/${roleId}/detailed-permissions`,
+    method: 'get'
+  })
+}
+
+// 保存角色细粒度权限
+export function saveRoleDetailedPermissions(roleId, permissions) {
+  return request({
+    url: `/role/${roleId}/detailed-permissions`,
+    method: 'put',
+    data: permissions
+  })
+}
+
 // 获取权限树
 export function getPermissionTree() {
   return request({

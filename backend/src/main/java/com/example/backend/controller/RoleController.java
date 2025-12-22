@@ -5,6 +5,7 @@ import com.example.backend.common.PageResult;
 import com.example.backend.common.Result;
 import com.example.backend.dto.RoleDTO;
 import com.example.backend.dto.RoleQueryDTO;
+import com.example.backend.dto.TemplatePermissionDTO;
 import com.example.backend.service.RoleService;
 import com.example.backend.vo.RoleVO;
 import com.example.backend.vo.UserVO;
@@ -83,6 +84,19 @@ public class RoleController {
     @PutMapping("/{roleId}/permissions")
     public Result<Void> saveRolePermissions(@PathVariable Long roleId, @RequestBody List<Long> templateIds) {
         roleService.saveRolePermissions(roleId, templateIds);
+        return Result.success();
+    }
+
+    @Operation(summary = "获取角色细粒度权限")
+    @GetMapping("/{roleId}/detailed-permissions")
+    public Result<List<TemplatePermissionDTO>> getRoleDetailedPermissions(@PathVariable Long roleId) {
+        return Result.success(roleService.getRoleDetailedPermissions(roleId));
+    }
+
+    @Operation(summary = "保存角色细粒度权限")
+    @PutMapping("/{roleId}/detailed-permissions")
+    public Result<Void> saveRoleDetailedPermissions(@PathVariable Long roleId, @RequestBody List<TemplatePermissionDTO> permissions) {
+        roleService.saveRoleDetailedPermissions(roleId, permissions);
         return Result.success();
     }
 

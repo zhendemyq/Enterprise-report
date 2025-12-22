@@ -8,6 +8,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.backend.common.ResultCode;
 import com.example.backend.dto.RoleDTO;
 import com.example.backend.dto.RoleQueryDTO;
+import com.example.backend.dto.TemplatePermissionDTO;
 import com.example.backend.entity.ReportPermission;
 import com.example.backend.entity.Role;
 import com.example.backend.entity.User;
@@ -215,6 +216,80 @@ public class RoleServiceImpl extends ServiceImpl<RoleMapper, Role> implements Ro
                 }
             }
         }
+    }
+
+    @Override
+    public List<TemplatePermissionDTO> getRoleDetailedPermissions(Long roleId) {
+        LambdaQueryWrapper<ReportPermission> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(ReportPermission::getRoleId, roleId);
+        List<ReportPermission> permissions = reportPermissionMapper.selectList(wrapper);
+
+        // 按模板ID分组
+        java.util.Map<Long, TemplatePermissionDTO> permMap = new java.util.HashMap<>();
+
+        for (ReportPermission perm : permissions) {
+            Long templateId = perm.getTemplateId();
+            TemplatePermissionDTO dto = permMap.computeIfAbsent(templateId, id -> {
+                TemplatePermissionDTO newDto = new TemplatePermissionDTO();
+                newDto.setTemplateId(id);
+                newDto.setView(false);
+                newDto.setGenerate(false);
+                newDto.setDownload(false);
+                newDto.setEdit(false);
+                return newDto;
+            });
+
+            // 根据权限类型设置对应标志
+            switch (perm.getPermissionType()) {
+                case 1 -> dto.setView(true);
+                case 2 -> dto.setGenerate(true);
+                case 3 -> dto.setDownload(true);
+                case 4 -> dto.setEdit(true);
+            }
+        }
+
+        return new java.util.ArrayList<>(permMap.values());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void saveRoleDetailedPermissions(Long roleId, List<TemplatePermissionDTO> permissions) {
+        // 先删除原有权限
+        LambdaQueryWrapper<ReportPermission> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(ReportPermission::getRoleId, roleId);
+        reportPermissionMapper.delete(wrapper);
+
+        // 保存新的细粒度权限
+        if (permissions != null && !permissions.isEmpty()) {
+            for (TemplatePermissionDTO perm : permissions) {
+                Long templateId = perm.getTemplateId();
+
+                // 根据各个权限标志插入对应记录
+                if (Boolean.TRUE.equals(perm.getView())) {
+                    insertPermission(roleId, templateId, 1);
+                }
+                if (Boolean.TRUE.equals(perm.getGenerate())) {
+                    insertPermission(roleId, templateId, 2);
+                }
+                if (Boolean.TRUE.equals(perm.getDownload())) {
+                    insertPermission(roleId, templateId, 3);
+                }
+                if (Boolean.TRUE.equals(perm.getEdit())) {
+                    insertPermission(roleId, templateId, 4);
+                }
+            }
+        }
+    }
+
+    /**
+     * 插入单条权限记录
+     */
+    private void insertPermission(Long roleId, Long templateId, Integer permissionType) {
+        ReportPermission permission = new ReportPermission();
+        permission.setRoleId(roleId);
+        permission.setTemplateId(templateId);
+        permission.setPermissionType(permissionType);
+        reportPermissionMapper.insert(permission);
     }
 
     @Override

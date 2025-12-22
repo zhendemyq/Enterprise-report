@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.example.backend.dto.RoleDTO;
 import com.example.backend.dto.RoleQueryDTO;
+import com.example.backend.dto.TemplatePermissionDTO;
 import com.example.backend.entity.Role;
 import com.example.backend.vo.RoleVO;
 import com.example.backend.vo.UserVO;
@@ -56,9 +57,19 @@ public interface RoleService extends IService<Role> {
     List<Long> getRolePermissions(Long roleId);
 
     /**
+     * 获取角色细粒度权限
+     */
+    List<TemplatePermissionDTO> getRoleDetailedPermissions(Long roleId);
+
+    /**
      * 保存角色权限
      */
     void saveRolePermissions(Long roleId, List<Long> templateIds);
+
+    /**
+     * 保存角色细粒度权限
+     */
+    void saveRoleDetailedPermissions(Long roleId, List<TemplatePermissionDTO> permissions);
 
     /**
      * 获取角色下的用户列表
