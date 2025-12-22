@@ -94,4 +94,9 @@ public class ReportTemplate extends BaseEntity {
      * 排序
      */
     private Integer sort;
+
+    /**
+     * 使用次数
+     */
+    private Integer useCount;
 }

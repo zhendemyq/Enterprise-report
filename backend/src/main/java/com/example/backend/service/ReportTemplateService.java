@@ -68,4 +68,9 @@ public interface ReportTemplateService extends IService<ReportTemplate> {
      * 获取用户有权限的模板列表
      */
     List<ReportTemplateVO> listUserTemplates();
+
+    /**
+     * 增加模板使用次数
+     */
+    void incrementUseCount(Long id);
 }

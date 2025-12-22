@@ -553,9 +553,9 @@ const handleGenerate = async () => {
           fileType: selectedFormat.value,
           params: generateParams
         }
-        
+
         const res = await generateReport(data)
-        
+
         if (res.data) {
           generatedReport.value = {
             id: res.data.id,
@@ -564,6 +564,9 @@ const handleGenerate = async () => {
             duration: res.data.duration || 0
           }
           successDialogVisible.value = true
+
+          // 刷新模板列表以更新使用次数
+          await loadTemplates()
         }
       } catch (error) {
         console.error('生成报表失败:', error)

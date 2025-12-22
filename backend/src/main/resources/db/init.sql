@@ -130,6 +130,7 @@ CREATE TABLE IF NOT EXISTS report_template (
     version INT DEFAULT 1 COMMENT '版本号',
     need_audit TINYINT DEFAULT 0 COMMENT '是否需要审核',
     sort INT DEFAULT 0 COMMENT '排序',
+    use_count INT DEFAULT 0 COMMENT '使用次数',
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     create_by BIGINT COMMENT '创建人ID',

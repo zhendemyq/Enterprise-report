@@ -279,4 +279,14 @@ public class ReportTemplateServiceImpl extends ServiceImpl<ReportTemplateMapper,
         
         return vo;
     }
+
+    @Override
+    public void incrementUseCount(Long id) {
+        ReportTemplate template = getById(id);
+        if (template != null) {
+            Integer currentCount = template.getUseCount();
+            template.setUseCount(currentCount == null ? 1 : currentCount + 1);
+            updateById(template);
+        }
+    }
 }

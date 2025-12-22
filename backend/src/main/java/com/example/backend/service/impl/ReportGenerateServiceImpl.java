@@ -111,6 +111,9 @@ public class ReportGenerateServiceImpl extends ServiceImpl<ReportRecordMapper, R
             record.setEndTime(LocalDateTime.now());
             record.setDuration(java.time.Duration.between(record.getStartTime(), record.getEndTime()).toMillis());
 
+            // 增加模板使用次数
+            templateService.incrementUseCount(template.getId());
+
         } catch (BusinessException e) {
             record.setStatus(2); // 失败
             record.setErrorMsg(e.getMessage());
@@ -166,6 +169,9 @@ public class ReportGenerateServiceImpl extends ServiceImpl<ReportRecordMapper, R
             record.setStatus(1);
             record.setEndTime(LocalDateTime.now());
             record.setDuration(java.time.Duration.between(record.getStartTime(), record.getEndTime()).toMillis());
+
+            // 增加模板使用次数
+            templateService.incrementUseCount(template.getId());
         } catch (Exception e) {
             logger.error("异步报表生成失败", e);
             record.setStatus(2);
