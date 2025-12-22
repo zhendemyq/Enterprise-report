@@ -487,7 +487,26 @@ onMounted(() => {
 // 加载模板列表
 const loadTemplates = async () => {
   try {
-    const res = await pageTemplates(queryParams)
+    // 构建查询参数，过滤掉空值确保搜索功能正常
+    const params = {
+      pageNum: queryParams.pageNum,
+      pageSize: queryParams.pageSize
+    }
+    // 只添加非空的搜索参数
+    if (queryParams.keyword && queryParams.keyword.trim()) {
+      params.keyword = queryParams.keyword.trim()
+    }
+    if (queryParams.categoryId != null) {
+      params.categoryId = queryParams.categoryId
+    }
+    if (queryParams.templateType != null) {
+      params.templateType = queryParams.templateType
+    }
+    if (queryParams.status != null) {
+      params.status = queryParams.status
+    }
+
+    const res = await pageTemplates(params)
     templateList.value = res.data?.records || []
     total.value = res.data?.total || 0
   } catch (error) {

@@ -395,7 +395,23 @@ onMounted(() => {
 const loadSchedules = async () => {
   loading.value = true
   try {
-    const res = await pageSchedules(queryParams)
+    // 构建查询参数，过滤掉空值确保搜索功能正常
+    const params = {
+      pageNum: queryParams.pageNum,
+      pageSize: queryParams.pageSize
+    }
+    // 只添加非空的搜索参数
+    if (queryParams.keyword && queryParams.keyword.trim()) {
+      params.keyword = queryParams.keyword.trim()
+    }
+    if (queryParams.status != null) {
+      params.status = queryParams.status
+    }
+    if (queryParams.scheduleType != null) {
+      params.scheduleType = queryParams.scheduleType
+    }
+
+    const res = await pageSchedules(params)
     scheduleList.value = res.data?.records || []
     total.value = res.data?.total || 0
   } catch (error) {
