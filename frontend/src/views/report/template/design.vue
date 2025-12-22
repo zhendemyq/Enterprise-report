@@ -546,6 +546,25 @@ const loadTemplateDetail = async () => {
   }
 }
 
+// 从SQL语句中提取表名
+const extractTableFromSql = (sql) => {
+  if (!sql) return null
+  // 匹配 FROM 后面的表名，支持多种格式
+  // SELECT * FROM table_name
+  // SELECT * FROM table_name WHERE ...
+  // SELECT * FROM schema.table_name
+  const fromMatch = sql.match(/\bFROM\s+([`"]?[\w.]+[`"]?)/i)
+  if (fromMatch) {
+    // 去除可能的反引号或引号，并取最后一部分（处理 schema.table 格式）
+    let tbl = fromMatch[1].replace(/[`"]/g, '')
+    if (tbl.includes('.')) {
+      tbl = tbl.split('.').pop()
+    }
+    return tbl
+  }
+  return null
+}
+
 // 处理数据源变更
 const handleDatasourceChange = async () => {
   if (!datasourceId.value) {
@@ -559,7 +578,15 @@ const handleDatasourceChange = async () => {
   try {
     const res = await getTables(datasourceId.value)
     tableList.value = res.data || []
-    tableName.value = tableList.value[0] || ''
+
+    // 优先根据SQL语句自动选择表
+    const extractedTable = extractTableFromSql(querySql.value)
+    if (extractedTable && tableList.value.includes(extractedTable)) {
+      tableName.value = extractedTable
+    } else {
+      tableName.value = tableList.value[0] || ''
+    }
+
     if (tableName.value) {
       await loadTableColumns(tableName.value)
     } else {
@@ -600,6 +627,18 @@ const loadTableColumns = async (table) => {
     label: col.COLUMN_COMMENT || col.column_comment || col.columnComment || ''
   }))
 }
+
+// 监听SQL变化，自动选择对应的表
+watch(querySql, async (newSql) => {
+  if (!newSql || !datasourceId.value || tableList.value.length === 0) return
+
+  const extractedTable = extractTableFromSql(newSql)
+  if (extractedTable && tableList.value.includes(extractedTable) && extractedTable !== tableName.value) {
+    tableName.value = extractedTable
+    await loadTableColumns(extractedTable)
+  }
+}, { immediate: false })
+
 // 格式化SQL
 const handleFormatSql = () => {
   // 简单格式化
