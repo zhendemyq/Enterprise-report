@@ -285,11 +285,15 @@
       width="800px"
     >
       <el-table :data="logList" max-height="400">
-        <el-table-column label="执行时间" prop="executeTime" width="170" />
+        <el-table-column label="执行时间" width="170">
+          <template #default="{ row }">
+            {{ formatDate(row.startTime) }}
+          </template>
+        </el-table-column>
         <el-table-column label="状态" width="80">
           <template #default="{ row }">
-            <el-tag :type="row.success ? 'success' : 'danger'" size="small">
-              {{ row.success ? '成功' : '失败' }}
+            <el-tag :type="getLogStatusType(row.status)" size="small">
+              {{ getLogStatusText(row.status) }}
             </el-tag>
           </template>
         </el-table-column>
@@ -298,7 +302,13 @@
             {{ row.duration }}ms
           </template>
         </el-table-column>
-        <el-table-column label="执行结果" prop="message" />
+        <el-table-column label="执行结果">
+          <template #default="{ row }">
+            <span v-if="row.status === 1" class="text-success">执行成功</span>
+            <span v-else-if="row.status === 2" class="text-danger">{{ row.errorMsg || '执行失败' }}</span>
+            <span v-else class="text-secondary">执行中...</span>
+          </template>
+        </el-table-column>
       </el-table>
     </el-dialog>
   </div>
@@ -572,6 +582,17 @@ const getScheduleTypeText = (type) => {
 const getScheduleTypeTag = (type) => {
   const map = { 1: 'success', 2: 'primary', 3: 'warning', 4: 'info' }
   return map[type] || 'info'
+}
+
+// 日志状态映射 (0=执行中, 1=成功, 2=失败)
+const getLogStatusType = (status) => {
+  const map = { 0: 'info', 1: 'success', 2: 'danger' }
+  return map[status] || 'info'
+}
+
+const getLogStatusText = (status) => {
+  const map = { 0: '执行中', 1: '成功', 2: '失败' }
+  return map[status] || '未知'
 }
 </script>
 

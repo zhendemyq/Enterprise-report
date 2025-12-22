@@ -154,7 +154,7 @@ xxl:
       port: 9999
       logpath: ./logs/xxl-job
       logretentiondays: 30
-    accessToken:
+    accessToken: default_token
 
 # 日志配置
 logging:
