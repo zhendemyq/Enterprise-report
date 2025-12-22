@@ -344,7 +344,7 @@
 
                     <!-- 图表组件 -->
                     <div v-else-if="comp.type === 'chart'" class="preview-chart">
-                      <div :ref="el => chartRefs[idx] = el" :style="{ width: comp.width + 'px', height: comp.height + 'px' }"></div>
+                      <div :id="'chart-' + idx" :style="{ width: comp.width + 'px', height: comp.height + 'px' }"></div>
                     </div>
 
                     <!-- 嵌套表格组件 -->
@@ -1306,7 +1306,10 @@ const extractFieldLayout = () => {
 // 解析组件占位符
 const parseComponents = (cellData, queryData) => {
   const components = []
-  const componentPattern = /\[\[(\w+):(.+?)\]\]/
+  // 修改正则表达式以正确匹配整个占位符
+  const componentPattern = /\[\[(\w+):([^\]]+)\]\]/
+
+  console.log('开始解析组件，cellData:', cellData)
 
   for (const [cellRef, value] of Object.entries(cellData)) {
     if (!value || typeof value !== 'string') continue
@@ -1315,6 +1318,7 @@ const parseComponents = (cellData, queryData) => {
     if (!match) continue
 
     const [, type, configStr] = match
+    console.log('匹配到组件:', { cellRef, type, configStr })
     const config = parseComponentConfig(configStr)
 
     switch (type) {
@@ -1460,11 +1464,26 @@ const renderCharts = async () => {
   // 动态导入 echarts
   const echarts = await import('echarts')
 
+  console.log('开始渲染图表，组件数量:', parsedComponents.value.length)
+
   parsedComponents.value.forEach((comp, idx) => {
     if (comp.type !== 'chart') return
 
-    const chartDom = chartRefs[idx]
-    if (!chartDom) return
+    console.log('渲染图表:', idx, comp)
+
+    const chartDom = document.getElementById('chart-' + idx)
+    if (!chartDom) {
+      console.warn('图表容器未找到:', 'chart-' + idx)
+      return
+    }
+
+    console.log('找到图表容器:', chartDom)
+
+    // 如果已经有图表实例，先销毁
+    const existingChart = echarts.getInstanceByDom(chartDom)
+    if (existingChart) {
+      existingChart.dispose()
+    }
 
     const chart = echarts.init(chartDom)
 
@@ -1474,6 +1493,8 @@ const renderCharts = async () => {
       const rows = comp.data.filter(row => row[comp.xField] === x)
       return rows.reduce((sum, row) => sum + (parseFloat(row[comp.yField]) || 0), 0)
     })
+
+    console.log('图表数据:', { xData, yData })
 
     let option = {}
 
@@ -1502,6 +1523,7 @@ const renderCharts = async () => {
     }
 
     chart.setOption(option)
+    console.log('图表渲染完成')
   })
 }
 
@@ -1570,8 +1592,12 @@ const generatePreview = async () => {
 
     // 渲染图表（需要等待DOM更新）
     await nextTick()
+    console.log('解析到的组件:', parsedComponents.value)
     if (parsedComponents.value.some(c => c.type === 'chart')) {
-      await renderCharts()
+      // 额外延迟确保 DOM 完全渲染
+      setTimeout(async () => {
+        await renderCharts()
+      }, 100)
     }
   } catch (error) {
     console.error('预览失败:', error)
