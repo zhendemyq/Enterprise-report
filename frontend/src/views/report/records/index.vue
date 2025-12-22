@@ -286,7 +286,7 @@ dayjs.locale('zh-cn')
 // 查询参数
 const queryParams = reactive({
   pageNum: 1,
-  pageSize: 20,
+  pageSize: 10,
   keyword: '',
   templateId: null,
   status: null,

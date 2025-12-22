@@ -126,20 +126,20 @@
           </template>
         </el-table-column>
         
-        <el-table-column label="最后登录" width="160">
+        <el-table-column label="最后登录" width="150">
           <template #default="{ row }">
             <span v-if="row.lastLoginTime">{{ formatDate(row.lastLoginTime) }}</span>
             <span v-else class="text-secondary">从未登录</span>
           </template>
         </el-table-column>
-        
-        <el-table-column label="创建时间" width="160">
+
+        <el-table-column label="创建时间" width="150">
           <template #default="{ row }">
             <span>{{ formatDate(row.createTime) }}</span>
           </template>
         </el-table-column>
-        
-        <el-table-column label="操作" width="240" fixed="right">
+
+        <el-table-column label="操作" width="220" fixed="right">
           <template #default="{ row }">
             <div class="table-actions">
               <el-button text type="primary" @click="handleEdit(row)">

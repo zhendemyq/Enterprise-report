@@ -106,21 +106,21 @@
           </template>
         </el-table-column>
         
-        <el-table-column label="上次执行" width="160">
+        <el-table-column label="上次执行" width="150">
           <template #default="{ row }">
             <span v-if="row.lastExecuteTime">{{ formatDate(row.lastExecuteTime) }}</span>
             <span v-else class="text-secondary">-</span>
           </template>
         </el-table-column>
-        
-        <el-table-column label="下次执行" width="160">
+
+        <el-table-column label="下次执行" width="150">
           <template #default="{ row }">
             <span v-if="row.nextExecuteTime">{{ formatDate(row.nextExecuteTime) }}</span>
             <span v-else class="text-secondary">-</span>
           </template>
         </el-table-column>
-        
-        <el-table-column label="执行统计" width="120">
+
+        <el-table-column label="执行统计" width="100">
           <template #default="{ row }">
             <div class="exec-stats">
               <span class="success">{{ row.executeCount - row.failCount }}</span>
@@ -142,7 +142,7 @@
           </template>
         </el-table-column>
         
-        <el-table-column label="操作" width="260" fixed="right">
+        <el-table-column label="操作" width="230" fixed="right">
           <template #default="{ row }">
             <div class="table-actions">
               <el-button text type="primary" @click="handleExecute(row)">
