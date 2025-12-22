@@ -86,11 +86,11 @@ a {
   border-radius: $radius-md !important;
   transition: all $transition-normal;
   padding: 10px 20px;
-  
-  &--primary {
+
+  &--primary:not(.is-text):not(.is-link) {
     background: $primary-color !important;
     border-color: $primary-color !important;
-    
+
     &:hover,
     &:focus {
       background: color.adjust($primary-color, $lightness: 8%) !important;
@@ -98,18 +98,18 @@ a {
       transform: translateY(-1px);
       box-shadow: $shadow-md;
     }
-    
+
     &:active {
       transform: translateY(0);
       background: color.adjust($primary-color, $lightness: -4%) !important;
     }
   }
-  
+
   &--default {
     background: $bg-primary !important;
     border-color: $border-color !important;
     color: $text-primary !important;
-    
+
     &:hover,
     &:focus {
       background: $gray-50 !important;
@@ -117,36 +117,81 @@ a {
       color: $text-primary !important;
     }
   }
-  
-  &--success {
+
+  &--success:not(.is-text):not(.is-link) {
     background: $success-color !important;
     border-color: $success-color !important;
   }
-  
-  &--warning {
+
+  &--warning:not(.is-text):not(.is-link) {
     background: $warning-color !important;
     border-color: $warning-color !important;
   }
-  
-  &--danger {
+
+  &--danger:not(.is-text):not(.is-link) {
     background: $danger-color !important;
     border-color: $danger-color !important;
   }
-  
+
   &.is-round {
     border-radius: $radius-full !important;
   }
-  
+
   &.is-circle {
     border-radius: 50% !important;
   }
-  
-  // 文字按钮
-  &--text {
-    color: $primary-color !important;
-    
-    &:hover {
-      background: rgba($primary-color, 0.08) !important;
+
+  // 文字按钮样式
+  &.is-text {
+    background: transparent !important;
+    border: none !important;
+    padding: 8px 12px;
+
+    &.el-button--primary {
+      color: $primary-color !important;
+
+      &:hover,
+      &:focus {
+        background: rgba($primary-color, 0.08) !important;
+        transform: none;
+        box-shadow: none;
+      }
+    }
+
+    &.el-button--success {
+      color: $success-color !important;
+
+      &:hover,
+      &:focus {
+        background: rgba($success-color, 0.08) !important;
+      }
+    }
+
+    &.el-button--warning {
+      color: $warning-color !important;
+
+      &:hover,
+      &:focus {
+        background: rgba($warning-color, 0.08) !important;
+      }
+    }
+
+    &.el-button--danger {
+      color: $danger-color !important;
+
+      &:hover,
+      &:focus {
+        background: rgba($danger-color, 0.08) !important;
+      }
+    }
+
+    &.el-button--info {
+      color: $text-secondary !important;
+
+      &:hover,
+      &:focus {
+        background: rgba($gray-500, 0.08) !important;
+      }
     }
   }
 }
