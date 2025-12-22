@@ -139,7 +139,7 @@
           </template>
         </el-table-column>
         
-        <el-table-column label="操作" width="180" fixed="right">
+        <el-table-column label="操作" width="240" fixed="right">
           <template #default="{ row }">
             <div class="table-actions">
               <el-button text type="primary" @click="handleEdit(row)">
