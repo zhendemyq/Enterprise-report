@@ -240,11 +240,7 @@ public class RoleServiceImpl extends ServiceImpl<RoleMapper, Role> implements Ro
 
         // 转换为VO
         return users.stream()
-                .map(user -> {
-                    UserVO vo = BeanUtil.copyProperties(user, UserVO.class);
-                    vo.setPassword(null); // 不返回密码
-                    return vo;
-                })
+                .map(user -> BeanUtil.copyProperties(user, UserVO.class))
                 .collect(Collectors.toList());
     }
 }
