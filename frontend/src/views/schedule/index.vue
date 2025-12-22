@@ -93,7 +93,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column label="Cron表达式" width="130">
+        <el-table-column label="Cron表达式" width="145">
           <template #default="{ row }">
             <code class="cron-code">{{ row.cronExpression }}</code>
           </template>
