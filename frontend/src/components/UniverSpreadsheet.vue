@@ -9,7 +9,7 @@
     <!-- 备用表格设计器 -->
     <div v-if="useFallback" class="fallback-spreadsheet">
       <div class="fallback-toolbar">
-        <span class="toolbar-title">📊 报表设计器</span>
+        <span class="toolbar-title">报表设计器</span>
         <div class="toolbar-actions">
           <button class="toolbar-btn" @click="handleInsertRow" title="插入行">
             <span>+行</span>

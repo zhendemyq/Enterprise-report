@@ -1839,9 +1839,9 @@ const handleSave = async () => {
         paramConfig: paramList.value,
         templateConfig: designJson
       })
-      if (res.data && res.data.id) {
-        templateId.value = res.data.id
-        router.replace(`/report/template/design/${res.data.id}`)
+      if (res.data) {
+        templateId.value = res.data
+        router.replace(`/report/template/design/${res.data}`)
       }
     }
 
