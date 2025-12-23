@@ -1797,6 +1797,11 @@ const handleExportPdf = async () => {
 
 // 保存
 const handleSave = async () => {
+  if (!templateName.value.trim()) {
+    ElMessage.warning('请输入模板名称')
+    return
+  }
+
   saveLoading.value = true
   try {
     // 获取Univer设计器数据
@@ -1804,14 +1809,14 @@ const handleSave = async () => {
     if (univerRef.value) {
       spreadsheetData = univerRef.value.exportToJson()
     }
-    
+
     const designJson = {
       templateName: templateName.value,
       templateType: templateType.value,
       datasourceId: datasourceId.value,
       querySql: querySql.value,
       paramConfig: JSON.stringify(paramList.value),
-      spreadsheetData: spreadsheetData, // Univer设计器数据
+      spreadsheetData: spreadsheetData,
       cellData: cellData,
       styleConfig: {
         fontSize: fontSize.value,
@@ -1819,11 +1824,26 @@ const handleSave = async () => {
         enableCache: enableCache.value
       }
     }
-    
+
     if (templateId.value) {
+      // 更新已有模板
       await saveTemplateDesign(templateId.value, designJson)
+    } else {
+      // 创建新模板
+      const res = await createTemplate({
+        templateName: templateName.value,
+        templateType: templateType.value,
+        datasourceId: datasourceId.value,
+        querySql: querySql.value,
+        paramConfig: JSON.stringify(paramList.value),
+        templateConfig: JSON.stringify(designJson)
+      })
+      if (res.data && res.data.id) {
+        templateId.value = res.data.id
+        router.replace(`/report/template/design/${res.data.id}`)
+      }
     }
-    
+
     ElMessage.success('保存成功')
   } catch (error) {
     ElMessage.error('保存失败')
