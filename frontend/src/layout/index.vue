@@ -94,17 +94,6 @@
         </div>
         
         <div class="header-right">
-          <!-- 搜索 -->
-          <div class="header-search">
-            <el-input
-              v-model="searchKeyword"
-              placeholder="搜索..."
-              prefix-icon="Search"
-              clearable
-              class="search-input"
-            />
-          </div>
-          
           <!-- 通知 -->
           <el-popover
             placement="bottom"
@@ -211,7 +200,6 @@ const router = useRouter()
 const appStore = useAppStore()
 const userStore = useUserStore()
 
-const searchKeyword = ref('')
 const cachedViews = ref(['Dashboard'])
 
 // 通知相关
