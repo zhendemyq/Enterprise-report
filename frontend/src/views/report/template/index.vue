@@ -417,7 +417,7 @@ const router = useRouter()
 // 查询参数
 const queryParams = reactive({
   pageNum: 1,
-  pageSize: 10,
+  pageSize: 12,
   keyword: '',
   categoryId: null,
   templateType: null,
