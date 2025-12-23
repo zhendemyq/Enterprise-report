@@ -1832,6 +1832,7 @@ const handleSave = async () => {
       // 创建新模板
       const res = await createTemplate({
         templateName: templateName.value,
+        templateCode: 'TPL_' + Date.now(),
         templateType: templateType.value,
         datasourceId: datasourceId.value,
         querySql: querySql.value,
