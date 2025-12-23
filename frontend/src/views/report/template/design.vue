@@ -1835,8 +1835,8 @@ const handleSave = async () => {
         templateType: templateType.value,
         datasourceId: datasourceId.value,
         querySql: querySql.value,
-        paramConfig: JSON.stringify(paramList.value),
-        templateConfig: JSON.stringify(designJson)
+        paramConfig: paramList.value,
+        templateConfig: designJson
       })
       if (res.data && res.data.id) {
         templateId.value = res.data.id
