@@ -38,23 +38,23 @@ class ReportGenerateServiceTest {
         testRecord.setId(1L);
         testRecord.setTemplateId(1L);
         testRecord.setTemplateName("测试报表模板");
-        testRecord.setStatus(2);
-        testRecord.setExportFormat("xlsx");
+        testRecord.setStatus(1); // 1-成功
+        testRecord.setFileType("xlsx");
         testRecord.setFilePath("/reports/test_report.xlsx");
         testRecord.setFileSize(1024L);
         testRecord.setCreateTime(LocalDateTime.now());
-        testRecord.setFinishTime(LocalDateTime.now());
+        testRecord.setEndTime(LocalDateTime.now());
     }
 
     @Test
     @DisplayName("报表记录状态测试")
     void recordStatusTest() {
-        // 0-待生成 1-生成中 2-生成成功 3-生成失败
+        // 0-生成中 1-成功 2-失败
         testRecord.setStatus(0);
         assertEquals(0, testRecord.getStatus());
 
-        testRecord.setStatus(2);
-        assertEquals(2, testRecord.getStatus());
+        testRecord.setStatus(1);
+        assertEquals(1, testRecord.getStatus());
     }
 
     @Test
@@ -63,8 +63,8 @@ class ReportGenerateServiceTest {
         String[] validFormats = {"xlsx", "pdf", "csv"};
 
         for (String format : validFormats) {
-            testRecord.setExportFormat(format);
-            assertEquals(format, testRecord.getExportFormat());
+            testRecord.setFileType(format);
+            assertEquals(format, testRecord.getFileType());
         }
     }
 

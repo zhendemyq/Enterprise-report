@@ -11,6 +11,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
@@ -29,6 +30,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
+@ActiveProfiles("test")
 class ReportDatasourceControllerTest {
 
     @Autowired
@@ -47,8 +49,10 @@ class ReportDatasourceControllerTest {
         ReportDatasourceDTO dto = new ReportDatasourceDTO();
         dto.setDatasourceName("生产MySQL");
         dto.setDatasourceCode("DS_MYSQL_PROD");
-        dto.setDatasourceType("mysql");
-        dto.setJdbcUrl("jdbc:mysql://localhost:3306/report_db");
+        dto.setDatasourceType(1); // 1-MySQL
+        dto.setHost("localhost");
+        dto.setPort(3306);
+        dto.setDatabaseName("report_db");
         dto.setUsername("root");
         dto.setPassword("password123");
 
@@ -70,8 +74,10 @@ class ReportDatasourceControllerTest {
         ReportDatasourceDTO dto = new ReportDatasourceDTO();
         dto.setDatasourceName("分析PostgreSQL");
         dto.setDatasourceCode("DS_PG_ANALYSIS");
-        dto.setDatasourceType("postgresql");
-        dto.setJdbcUrl("jdbc:postgresql://localhost:5432/analytics");
+        dto.setDatasourceType(2); // 2-PostgreSQL
+        dto.setHost("localhost");
+        dto.setPort(5432);
+        dto.setDatabaseName("analytics");
         dto.setUsername("postgres");
         dto.setPassword("password123");
 
@@ -92,10 +98,9 @@ class ReportDatasourceControllerTest {
         ReportDatasourceDTO dto = new ReportDatasourceDTO();
         dto.setDatasourceName("外部API数据源");
         dto.setDatasourceCode("DS_API_EXT");
-        dto.setDatasourceType("api");
+        dto.setDatasourceType(5); // 5-API接口
         dto.setApiUrl("https://api.example.com/data");
-        dto.setApiMethod("GET");
-        Map<String, String> headers = new HashMap<>();
+        Map<String, Object> headers = new HashMap<>();
         headers.put("Authorization", "Bearer token");
         dto.setApiHeaders(headers);
 
@@ -117,7 +122,7 @@ class ReportDatasourceControllerTest {
         vo.setId(1L);
         vo.setDatasourceName("生产MySQL");
         vo.setDatasourceCode("DS_MYSQL_PROD");
-        vo.setDatasourceType("mysql");
+        vo.setDatasourceType(1);
         vo.setStatus(1);
         vo.setCreateTime(LocalDateTime.now());
 
@@ -163,7 +168,7 @@ class ReportDatasourceControllerTest {
         ReportDatasourceVO vo1 = new ReportDatasourceVO();
         vo1.setId(1L);
         vo1.setDatasourceName("MySQL数据源");
-        
+
         ReportDatasourceVO vo2 = new ReportDatasourceVO();
         vo2.setId(2L);
         vo2.setDatasourceName("PostgreSQL数据源");
@@ -184,13 +189,14 @@ class ReportDatasourceControllerTest {
         Map<String, Object> row1 = new HashMap<>();
         row1.put("id", 1);
         row1.put("name", "Product A");
-        
-        when(reportDatasourceService.executeQuery(anyLong(), any())).thenReturn(Arrays.asList(row1));
+
+        when(reportDatasourceService.executeQuery(anyLong(), any(), any())).thenReturn(Arrays.asList(row1));
 
         // When & Then
         mockMvc.perform(post("/report/datasource/1/query")
+                        .param("sql", "SELECT * FROM products LIMIT 10")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"sql\": \"SELECT * FROM products LIMIT 10\"}"))
+                        .content("{}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
     }
@@ -211,8 +217,10 @@ class ReportDatasourceControllerTest {
         ReportDatasourceDTO dto = new ReportDatasourceDTO();
         dto.setDatasourceName("生产MySQL-更新");
         dto.setDatasourceCode("DS_MYSQL_PROD");
-        dto.setDatasourceType("mysql");
-        dto.setJdbcUrl("jdbc:mysql://192.168.1.100:3306/report_db");
+        dto.setDatasourceType(1);
+        dto.setHost("192.168.1.100");
+        dto.setPort(3306);
+        dto.setDatabaseName("report_db");
         dto.setUsername("root");
         dto.setPassword("newpassword");
 

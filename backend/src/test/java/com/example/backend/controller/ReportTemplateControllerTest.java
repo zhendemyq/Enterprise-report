@@ -11,12 +11,14 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -26,6 +28,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
+@ActiveProfiles("test")
 class ReportTemplateControllerTest {
 
     @Autowired
@@ -126,7 +129,7 @@ class ReportTemplateControllerTest {
     @DisplayName("发布模板 - 成功")
     void publishTemplate_Success() throws Exception {
         // When & Then
-        mockMvc.perform(post("/report/template/1/publish"))
+        mockMvc.perform(put("/report/template/1/publish"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
     }
@@ -135,7 +138,7 @@ class ReportTemplateControllerTest {
     @DisplayName("下线模板 - 成功")
     void offlineTemplate_Success() throws Exception {
         // When & Then
-        mockMvc.perform(post("/report/template/1/offline"))
+        mockMvc.perform(put("/report/template/1/offline"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
     }
@@ -144,10 +147,11 @@ class ReportTemplateControllerTest {
     @DisplayName("复制模板 - 成功")
     void copyTemplate_Success() throws Exception {
         // Given
-        when(reportTemplateService.copyTemplate(anyLong())).thenReturn(2L);
+        when(reportTemplateService.copyTemplate(anyLong(), anyString())).thenReturn(2L);
 
         // When & Then
-        mockMvc.perform(post("/report/template/1/copy"))
+        mockMvc.perform(post("/report/template/1/copy")
+                        .param("newName", "销售日报-副本"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data").value(2));

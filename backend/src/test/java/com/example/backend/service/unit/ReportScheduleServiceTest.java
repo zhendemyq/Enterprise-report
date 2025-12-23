@@ -23,12 +23,13 @@ class ReportScheduleServiceTest {
     void setUp() {
         testSchedule = new ReportSchedule();
         testSchedule.setId(1L);
-        testSchedule.setScheduleName("每日销售报表");
+        testSchedule.setTaskName("每日销售报表");
+        testSchedule.setTaskCode("TASK_DAILY_SALES");
         testSchedule.setTemplateId(1L);
         testSchedule.setCronExpression("0 0 8 * * ?");
-        testSchedule.setExportFormat("xlsx");
+        testSchedule.setFileType("xlsx");
         testSchedule.setStatus(1);
-        testSchedule.setRecipients("admin@company.com");
+        testSchedule.setEmailReceivers("admin@company.com");
         testSchedule.setCreateTime(LocalDateTime.now());
     }
 
@@ -55,20 +56,20 @@ class ReportScheduleServiceTest {
     @Test
     @DisplayName("导出格式测试")
     void exportFormatTest() {
-        testSchedule.setExportFormat("xlsx");
-        assertEquals("xlsx", testSchedule.getExportFormat());
+        testSchedule.setFileType("xlsx");
+        assertEquals("xlsx", testSchedule.getFileType());
 
-        testSchedule.setExportFormat("pdf");
-        assertEquals("pdf", testSchedule.getExportFormat());
+        testSchedule.setFileType("pdf");
+        assertEquals("pdf", testSchedule.getFileType());
     }
 
     @Test
     @DisplayName("收件人解析测试")
     void recipientsParseTest() {
         String recipients = "user1@test.com,user2@test.com,user3@test.com";
-        testSchedule.setRecipients(recipients);
+        testSchedule.setEmailReceivers(recipients);
 
-        String[] emails = testSchedule.getRecipients().split(",");
+        String[] emails = testSchedule.getEmailReceivers().split(",");
         assertEquals(3, emails.length);
         assertEquals("user1@test.com", emails[0]);
     }

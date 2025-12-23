@@ -8,6 +8,7 @@ import com.xxl.job.core.handler.annotation.XxlJob;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -17,6 +18,7 @@ import java.util.List;
  * 报表定时任务Handler
  */
 @Component
+@ConditionalOnProperty(name = "xxl.job.enabled", havingValue = "true", matchIfMissing = true)
 public class ReportScheduleJobHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(ReportScheduleJobHandler.class);
