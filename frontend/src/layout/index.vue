@@ -154,15 +154,7 @@
             </div>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item>
-                  <el-icon><User /></el-icon>
-                  <span>个人中心</span>
-                </el-dropdown-item>
-                <el-dropdown-item>
-                  <el-icon><Setting /></el-icon>
-                  <span>系统设置</span>
-                </el-dropdown-item>
-                <el-dropdown-item divided @click="handleLogout">
+                <el-dropdown-item @click="handleLogout">
                   <el-icon><SwitchButton /></el-icon>
                   <span>退出登录</span>
                 </el-dropdown-item>
